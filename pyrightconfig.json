@@ -9,5 +9,6 @@
     "reportUnannotatedClassAttribute": "none",
     "reportImplicitOverride": "none",
     "reportUnknownParameterType": "none",
-    "reportMissingParameterType": "none"
+    "reportMissingParameterType": "none",
+    "reportUnusedParameter": "none"
 }
