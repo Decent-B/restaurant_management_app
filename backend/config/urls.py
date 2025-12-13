@@ -71,6 +71,7 @@ urlpatterns = [
     path('api/orders/pay/', order_views.process_payment, name='pay_for_order'),
     # Reviews URLs (using router)
     path('api/reviews/', include(review_router.urls)),
+    path('api/submit_feedback/', review_views.submit_feedback, name="submit_feedback"),
 
     # Analytics URLs
     path('api/analytics/rating/', analytics_views.get_rating_analytics, name='get_rating_analytics'),
