@@ -5,5 +5,9 @@
     "reportMissingTypeStubs": "none",
     "reportUnknownArgumentType": "none",
     "reportAny": "none",
-    "reportAttributeAccessIssue": "none"
+    "reportAttributeAccessIssue": "none",
+    "reportUnannotatedClassAttribute": "none",
+    "reportImplicitOverride": "none",
+    "reportUnknownParameterType": "none",
+    "reportMissingParameterType": "none"
 }

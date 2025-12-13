@@ -2,7 +2,7 @@
 from tokenize import group
 from tracemalloc import start
 from django.core.management.base import BaseCommand
-from accounts.models import Staff, Diner
+from accounts.models import User
 from menu.models import Menu, MenuItem
 from orders.models import Order, OrderItem, Payment
 from reviews.models import Feedback
@@ -24,8 +24,7 @@ class Command(BaseCommand):
         
         if database_seeding:
             self.stdout.write(self.style.WARNING('DATABASE_SEEDING is set to True. Deleting all current data...'))
-            Staff.objects.all().delete()
-            Diner.objects.all().delete()
+            User.objects.all().delete()
             Menu.objects.all().delete()
             MenuItem.objects.all().delete()
             Order.objects.all().delete()
@@ -36,11 +35,11 @@ class Command(BaseCommand):
             
             # Add your seeding logic here
             # Example seeding for Staff
-            staff_fieri = Staff.objects.create(name="Guy Fieri", role="Manager", email="fieri@example.com")
-            staff_ray = Staff.objects.create(name="Rachael Ray", role="Chef", email="ray@example.com")
-            staff_caines = Staff.objects.create(name="Michael Caines", role="Waiter", email="caines@example.com")
-            staff_oliver = Staff.objects.create(name="Jamie Oliver", role="Waiter", email="oliver@example.com")
-            staff_ramsay = Staff.objects.create(name="Gordon Ramsay", role="Chef", email="ramsay@example.com")
+            staff_fieri = User.objects.create(name="Guy Fieri", role="Manager", email="fieri@example.com")
+            staff_ray = User.objects.create(name="Rachael Ray", role="Staff", email="ray@example.com")
+            staff_caines = User.objects.create(name="Michael Caines", role="Staff", email="caines@example.com")
+            staff_oliver = User.objects.create(name="Jamie Oliver", role="Staff", email="oliver@example.com")
+            staff_ramsay = User.objects.create(name="Gordon Ramsay", role="Staff", email="ramsay@example.com")
             staff_fieri.set_password("123")
             staff_ray.set_password("123")
             staff_caines.set_password("123")
@@ -53,13 +52,13 @@ class Command(BaseCommand):
             staff_ramsay.save()
             
             # Example seeding for Diner
-            diner_giap = Diner.objects.create(name="nhugiap", email="giap.nn225441@sis.hust.edu.vn", phone_num="1234567890")
-            diner_binh = Diner.objects.create(name="ducbinh", email="binh.nd225475@sis.hust.edu.vn", phone_num="0987654321")
-            diner_khanh = Diner.objects.create(name="ankhanh", email="khanh.ta225447@sis.hust.edu.vn")
-            diner_bao = Diner.objects.create(name="vietbao", email="bao.mv225474@sis.hust.edu.vn", phone_num="0123456789")
-            diner_tu = Diner.objects.create(name="anhtu", email="tu.pa225463@sis.hust.edu.vn", phone_num="0123457789")
-            diner_mbappe = Diner.objects.create(name="Kylian Mbappe", phone_num="9876543210", email="mbappe@example.com")
-            diner_messi = Diner.objects.create(name="Lionel Messi", email="messi@example.com")
+            diner_giap = User.objects.create(name="nhugiap", role="Customer", email="giap.nn225441@sis.hust.edu.vn", phone_num="1234567890")
+            diner_binh = User.objects.create(name="ducbinh", role="Customer", email="binh.nd225475@sis.hust.edu.vn", phone_num="0987654321")
+            diner_khanh = User.objects.create(name="ankhanh", role="Customer", email="khanh.ta225447@sis.hust.edu.vn")
+            diner_bao = User.objects.create(name="vietbao", role="Customer", email="bao.mv225474@sis.hust.edu.vn", phone_num="0123456789")
+            diner_tu = User.objects.create(name="anhtu", role="Customer", email="tu.pa225463@sis.hust.edu.vn", phone_num="0123457789")
+            diner_mbappe = User.objects.create(name="Kylian Mbappe", role="Customer", phone_num="9876543210", email="mbappe@example.com")
+            diner_messi = User.objects.create(name="Lionel Messi", role="Customer", email="messi@example.com")
             diner_giap.set_password("123")
             diner_binh.set_password("123")
             diner_khanh.set_password("123")
@@ -248,13 +247,15 @@ class Command(BaseCommand):
             payment_mbappe = Payment.objects.create(order=order_mbappe, method='CASH', status='paid')
             
             # Example seeding for Feedback
-            feedback_mbappe = Feedback.objects.create(order=order_mbappe, rating=5, comment="Great service!")
-            feedback_messi = Feedback.objects.create(order=order_messi, rating=4, comment="The food was delicious, but the drinks were too sweet.")
+            feedback_mbappe = Feedback.objects.create(order=order_mbappe, diner=diner_mbappe, rating=5, comment="Great service!")
+            feedback_messi = Feedback.objects.create(order=order_messi, diner=diner_messi, rating=4, comment="The food was delicious, but the drinks were too sweet.")
             list_generated_feedbacks = []
+            all_diners = [diner_giap, diner_binh, diner_khanh, diner_bao, diner_tu, diner_mbappe, diner_messi]
             for _ in range(1412):
                 # Randomly select one of the orders created above (no comment, and the distribution will be [0.1, 0.05, 0.14, 0.31, 0.4]). The time created will be random within the last 365 days. They won't be associated with any order.
                 list_generated_feedbacks.append(
                     Feedback(
+                        diner=random.choice(all_diners),
                         rating=random.choices([1, 2, 3, 4, 5], weights=[10, 5, 14, 31, 40])[0],
                         comment="",
                         time_created=get_random_datetime()

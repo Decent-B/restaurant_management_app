@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from accounts.models import Staff, Diner
+from accounts.models import User
 
 @pytest.mark.django_db
 def test_staff_login_success(client):

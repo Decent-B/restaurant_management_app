@@ -1,30 +1,68 @@
-from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from pytest import Session
 from .models import Order, OrderItem, Payment
 from menu.models import MenuItem
-from accounts.models import Diner
+from accounts.models import User
 import json
+
+# Authorization helper functions
+def get_current_user(request):
+    """Get currently logged-in user from session"""
+    if 'staff_id' in request.session:
+        try:
+            return User.objects.get(id=request.session['staff_id'], role__in=['Staff', 'Manager'])
+        except User.DoesNotExist:
+            return None
+    elif 'diner_id' in request.session:
+        try:
+            return User.objects.get(id=request.session['diner_id'], role='Customer')
+        except User.DoesNotExist:
+            return None
+    return None
+
+def is_manager(user):
+    """Check if user is a Manager"""
+    return user and user.role == 'Manager'
+
+def is_staff(user):
+    """Check if user is Staff or Manager"""
+    return user and user.role in ['Staff', 'Manager']
+
+def is_customer(user):
+    """Check if user is a Customer"""
+    return user and user.role == 'Customer'
 
 @csrf_exempt
 def get_order_by_id(request: HttpResponse) -> JsonResponse:
     """
     Get specific order by ID.
+    RBAC: Customer can view own orders, Staff/Manager can view all orders.
     """
     if request.method == "GET":
+        current_user = get_current_user(request)
+        if not current_user:
+            return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+        
         order_id = request.GET.get("order_id")
+        if not order_id:
+            return JsonResponse({"status": "error", "message": "order_id parameter required"}, status=400)
+        
         try:
             order = Order.objects.get(id=order_id)
         except Order.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Order not found"}, status=404)
+        
+        # RBAC: Customer can only view own orders
+        if is_customer(current_user) and order.diner.id != current_user.id:
+            return JsonResponse({"status": "error", "message": "Unauthorized: Can only view own orders"}, status=403)
 
         return JsonResponse({"status": "success",
                              "order_id": order.id,
+                             "diner_id": order.diner.id,
                              "service_type": order.service_type,
                              "status": order.status,
-                             "total_price": order.total_price,
+                             "total_price": str(order.total_price),
                              "note": order.note,
                              "time_created": order.time_created.strftime('%Y-%m-%d %H:%M:%S'),
                              "last_modified": order.last_modified.strftime('%Y-%m-%d %H:%M:%S')}, 
@@ -35,13 +73,25 @@ def get_order_by_id(request: HttpResponse) -> JsonResponse:
 def get_bill(request: HttpResponse) -> JsonResponse:
     """
     Get the bill for a specific order.
+    RBAC: Customer can view own bills, Staff/Manager can view all bills.
     """
     if request.method == "GET":
+        current_user = get_current_user(request)
+        if not current_user:
+            return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+        
         order_id = request.GET.get("order_id")
+        if not order_id:
+            return JsonResponse({"status": "error", "message": "order_id parameter required"}, status=400)
+        
         try:
             order = Order.objects.get(id=order_id)
         except Order.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Order not found"}, status=404)
+        
+        # RBAC: Customer can only view own bills
+        if is_customer(current_user) and order.diner.id != current_user.id:
+            return JsonResponse({"status": "error", "message": "Unauthorized: Can only view own bills"}, status=403)
 
         order_items = list(
             OrderItem.objects.filter(order_id=order_id)
@@ -54,15 +104,16 @@ def get_bill(request: HttpResponse) -> JsonResponse:
                 "menu_item_id": item["menu_item__id"],
                 "image": item.get("menu_item__image", None),
                 "quantity": item["quantity"],
-                "price": item["menu_item__price"]
+                "price": str(item["menu_item__price"])
             })
             
         return JsonResponse({
             "status": "success",
             "order_id": order.id,
+            "diner_id": order.diner.id,
             "service_type": order.service_type,
             "order_status": order.status,
-            "total_price": order.total_price,
+            "total_price": str(order.total_price),
             "note": order.note,
             "time_created": order.time_created.strftime('%Y-%m-%d %H:%M:%S'),
             "last_modified": order.last_modified.strftime('%Y-%m-%d %H:%M:%S'),
@@ -209,8 +260,8 @@ def submit_order(request: HttpResponse) -> JsonResponse:
         assert len(ordered_items) == len(quantities) and len(ordered_items) > 0, "Items and quantities mismatch or empty"
         
         try:
-            diner = Diner.objects.get(id=diner_id)
-        except Diner.DoesNotExist:
+            diner = User.objects.get(id=diner_id, role='Customer')
+        except User.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Diner not found"})
         
         # Create the new order (status defaults to 'PENDING')
@@ -352,33 +403,40 @@ def get_order_status(request: HttpResponse) -> JsonResponse:
 @csrf_exempt
 def update_order_status_by_staff(request: HttpResponse) -> JsonResponse:
     """
-    Update the status of an order (e.g., from PENDING to COMPLETED).
-    This action should be restricted to staff members.
+    Update the status of an order.
+    RBAC: Only Staff and Manager can update order status.
     """
-    if "staff_id" not in request.session: # Check if staff is logged in
-        return JsonResponse({"status": "error", "message": "Not authorized. Staff access required."}, status=403)
-
     if request.method == "POST":
+        current_user = get_current_user(request)
+        if not is_staff(current_user):
+            return JsonResponse({"status": "error", "message": "Unauthorized: Staff access required"}, status=403)
+
         order_id = request.POST.get("order_id")
         new_status = request.POST.get("status")
-
+        
         if not order_id or not new_status:
-            return JsonResponse({"status": "error", "message": "Order ID and new status are required"}, status=400)
-
-        # Validate new_status against Order.STATUS_CHOICES
-        valid_statuses = [choice[0] for choice in Order.STATUS_CHOICES]
+            return JsonResponse({"status": "error", "message": "Missing required fields: order_id, status"}, status=400)
+        
+        valid_statuses = ['PENDING', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED']
         if new_status not in valid_statuses:
-            return JsonResponse({"status": "error", "message": f"Invalid status. Must be one of {valid_statuses}"}, status=400)
-
+            return JsonResponse({"status": "error", "message": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}, status=400)
+        
         try:
             order = Order.objects.get(id=order_id)
-            order.status = new_status
-            order.last_modified = timezone.now()
-            order.save()
-            # Potentially trigger notifications or other actions here
-            return JsonResponse({"status": "success", "message": f"Order {order_id} status updated to {new_status}"})
         except Order.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Order not found"}, status=404)
+        
+        old_status = order.status
+        order.status = new_status
+        order.last_modified = timezone.now()
+        order.save()
+        
+        return JsonResponse({
+            "status": "success",
+            "message": f"Order status updated from {old_status} to {new_status}",
+            "order_id": order.id,
+            "new_status": new_status
+        }, status=200)
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
 
 @csrf_exempt
@@ -406,7 +464,7 @@ def get_diner_orders(request: HttpResponse) -> JsonResponse:
 
     if request.method == "GET":
         try:
-            diner = Diner.objects.get(id=diner_id)
+            diner = User.objects.get(id=diner_id, role='Customer')
             orders = Order.objects.filter(diner=diner).order_by('-time_created')
             orders_data = []
             for order in orders:
@@ -419,7 +477,7 @@ def get_diner_orders(request: HttpResponse) -> JsonResponse:
                     "items_count": sum(item['quantity'] for item in items) # Example: total items
                 })
             return JsonResponse({"status": "success", "diner_id": diner_id, "orders": orders_data})
-        except Diner.DoesNotExist:
+        except User.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Diner not found"}, status=404)
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
 
@@ -504,7 +562,7 @@ def process_payment(request: HttpResponse) -> JsonResponse:
                 return JsonResponse({"status": "success", "message": "Order already paid"})
 
             # Create or update payment record
-            payment, created = Payment.objects.update_or_create(
+            payment, _ = Payment.objects.update_or_create(
                 order=order,
                 defaults={'method': payment_method, 'status': 'paid'} # Mark as paid
             )

@@ -1,6 +1,4 @@
-from django.shortcuts import render
-
-from accounts.models import Staff
+from accounts.models import User
 from .models import Menu, MenuItem
 from .serializers import MenuSerializer, MenuItemSerializer
 from django.http import JsonResponse, HttpResponse
@@ -29,7 +27,7 @@ def add_menu_items(request: HttpResponse) -> JsonResponse:
     """
     if request.method == "POST":
         if 'staff_id' in request.session:
-            staff = Staff.objects.get(id=request.session['staff_id'])
+            staff = User.objects.get(id=request.session['staff_id'], role__in=['Staff', 'Manager'])
             if staff.role == 'Manager':
                 name = request.POST.get("name")
                 description = request.POST.get("description")
@@ -71,7 +69,7 @@ def remove_menu_items(request: HttpResponse) -> JsonResponse:
     """
     if request.method == "POST":
         if 'staff_id' in request.session:
-            staff = Staff.objects.get(id=request.session['staff_id'])
+            staff = User.objects.get(id=request.session['staff_id'], role__in=['Staff', 'Manager'])
             if staff.role == 'Manager':
                 item_id = request.POST.get("item_id")
                 if not item_id:
@@ -96,7 +94,7 @@ def change_item_info(request: HttpResponse) -> JsonResponse:
     """
     if request.method == "POST":
         if 'staff_id' in request.session:
-            staff = Staff.objects.get(id=request.session['staff_id'])
+            staff = User.objects.get(id=request.session['staff_id'], role__in=['Staff', 'Manager'])
             if staff.role == 'Manager':
                 item_id = request.POST.get("item_id")
                 if not item_id:

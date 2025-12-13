@@ -1,6 +1,6 @@
 # from django.test import TestCase
 import pytest
-from accounts.models import Staff, Diner
+from accounts.models import User
 
 @pytest.mark.django_db
 def test_staff_password_hashing():

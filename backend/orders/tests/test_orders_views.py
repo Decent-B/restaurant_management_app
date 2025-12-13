@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from orders.models import Order, OrderItem, Payment
 from menu.models import MenuItem, Menu
-from accounts.models import Diner, Staff
+from accounts.models import User
 
 @pytest.fixture
 def menu(db):

@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/accounts/logout/', account_views.logout_view, name='logout'),
     path('api/accounts/protected/', account_views.protected_view, name='protected'),
     path('api/accounts/diner/info/', account_views.get_diner_info, name='get_diner_info'),
+    path('api/accounts/user/update/', account_views.update_user_info, name='update_user_info'),
     path('api/accounts/manager/add/', account_views.add_accounts, name='add_accounts'),
     path('api/accounts/manager/remove/', account_views.delete_accounts, name='delete_accounts'),
     path('api/accounts/manager/update_role/', account_views.update_roles, name='update_roles'),
