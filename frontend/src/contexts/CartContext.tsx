@@ -34,11 +34,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/menu/menu-items/")
-      .then((res) => res.json())
-      .then((data) => setAllMenuItems(data))
-      .catch((error) => console.error("Failed to fetch menu items:", error));
-  
+    import('../api/endpoints').then(({ menuAPI }) => {
+      menuAPI.listMenuItems()
+        .then((data) => setAllMenuItems(data))
+        .catch((error) => console.error("Failed to fetch menu items:", error));
+    });
   }, []);
 
   const addToCart = (id: number) => {

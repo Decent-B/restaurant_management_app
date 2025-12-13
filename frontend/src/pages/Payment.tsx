@@ -37,23 +37,17 @@ export default function Payment() {
     formData.append("payment_method", selected === "cash" ? "CASH" : "ONLINE_BANKING");
 
     try {
-      const res = await fetch("http://localhost:8000/api/orders/pay/", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
-      const data = await res.json();
+      const { ordersAPI } = await import('../api/endpoints');
+      const paymentMethod = selected === "cash" ? "CASH" : "ONLINE_BANKING";
+      const data = await ordersAPI.processPayment(parseInt(order_id), paymentMethod);
       if (data.status === "success") {
         setPaymentSuccess(true);
       } else {
         alert("Payment failed.")
       }
-    } catch (error){
+    } catch (error: any) {
       alert(`Error: ${error.message}`)
-  };
+    };
 }
 
   return (

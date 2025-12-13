@@ -56,18 +56,17 @@ export default function Order() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/menu/menus/")
-      .then((res) => res.json())
-      .then((data) => setMenus(data))
-      .catch((error) => {
-        console.error("Failed to fetch menus:", error);
-      });
+    import('../api/endpoints').then(({ menuAPI }) => {
+      menuAPI.listMenus()
+        .then((data) => setMenus(data))
+        .catch((error) => {
+          console.error("Failed to fetch menus:", error);
+        });
 
-    fetch("http://localhost:8000/api/menu/menu-items/")
-      .then((res) => res.json())
-      .then((data) => setMenuItems(data))
-      .catch((error) => console.error("Failed to fetch menu items:", error));
-  
+      menuAPI.listMenuItems()
+        .then((data) => setMenuItems(data))
+        .catch((error) => console.error("Failed to fetch menu items:", error));
+    });
   }, []);
 
   return (

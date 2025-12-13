@@ -64,24 +64,17 @@ export default function CartSummary() {
     // if (address && serviceType === 'Delivery') inputData['address'] = address;
 
     try {
-      const res = await fetch('http://localhost:8000/api/orders/submit/', {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: 'POST',
-        body: JSON.stringify(inputData),
-      });
+      const { ordersAPI } = await import('../api/endpoints');
+      const data = await ordersAPI.submitOrder(inputData);
 
-      const data = await res.json();
-
-      if (res.ok && data.status === 'success') {
+      if (data.status === 'success') {
         clearCart();
         navigate(`/order/confirmation/${data.order_id}`);
       } else {
         console.error('Order submission failed:', data);
         alert(`Failed to submit order. Please try again. Error message: ${data.message || ''}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Checkout error:', error);
       alert(`An unexpected error occurred during checkout. Error message: ${error.message || ''}`);
     } finally {

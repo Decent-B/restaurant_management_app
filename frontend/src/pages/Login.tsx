@@ -1,5 +1,5 @@
 import Layout from "../components/Layout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { login } from "../api/auth";
@@ -13,23 +13,58 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [loginSuccess, setLoginSuccess] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
-  const { fetchUser } = useAuth();
+  const { user, setUser } = useAuth();
+
+  // Determine redirect path based on user role
+  const getRedirectPath = () => {
+    // Always use role-based redirect on login
+    // This ensures consistent behavior regardless of where they came from
+    if (user) {
+      switch (user.role) {
+        case 'Customer':
+          return '/order';  // Customers go to order page
+        case 'Staff':
+          return '/staff/orders';  // Staff go to order management
+        case 'Manager':
+          return '/settings';  // Managers go to settings
+        default:
+          return '/';
+      }
+    }
+    return '/';
+  };
+
+  // Navigate after successful login when user state is updated
+  useEffect(() => {
+    console.log('[Login] useEffect triggered:', { loginSuccess, user: user ? 'User exists' : 'No user' });
+    if (loginSuccess && user) {
+      const redirectPath = getRedirectPath();
+      console.log('[Login] Navigating to:', redirectPath);
+      navigate(redirectPath, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loginSuccess, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setLoginSuccess(false);
     // alert(`Mapping: ${MAPPING[userType]}, username ${username}, pass: ${password}`)
     try {
       const data = await login(MAPPING[userType], username, password);
       
       if (data.success) {
-        console.log("Login successful:", data);
-        await fetchUser();
-        navigate(from, { replace: true });
+        console.log("[Login] Login successful:", data);
+        console.log("[Login] Setting user:", data.user);
+        // Set user from login response
+        setUser(data.user);
+        console.log("[Login] Setting loginSuccess to true");
+        // Set flag to trigger navigation in useEffect
+        setLoginSuccess(true);
       } else {
         setError(data.error || "Login failed");
       }

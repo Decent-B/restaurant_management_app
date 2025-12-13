@@ -137,19 +137,9 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
       
       const startParam = formatDateForAPI(fromDate);
       const endParam = formatDateForAPI(toDate);
-      const ratingUrl = `http://localhost:8000/api/analytics/rating/?start=${encodeURIComponent(startParam)}&end=${encodeURIComponent(endParam)}`;
-
-      const response = await fetch(ratingUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch rating data: ${response.status}`);
-      }
-
-      const result: RatingData = await response.json();
+      
+      const { analyticsAPI } = await import('../api/endpoints');
+      const result: RatingData = await analyticsAPI.getRatingAnalytics(startParam, endParam);
       setRatingData(result);
     } catch (err) {
       console.error('Error fetching rating data:', err);
@@ -189,19 +179,9 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
       
       const startParam = formatDateForAPI(fromDate);
       const endParam = formatDateForAPI(toDate);
-      const revenueUrl = `http://localhost:8000/api/analytics/revenue/?start=${encodeURIComponent(startParam)}&end=${encodeURIComponent(endParam)}`;
-  
-      const response = await fetch(revenueUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Failed to fetch revenue data: ${response.status}`);
-      }
-  
-      const rawResult = await response.json();
+      
+      const { analyticsAPI } = await import('../api/endpoints');
+      const rawResult = await analyticsAPI.getRevenueAnalytics(startParam, endParam);
       console.log('Raw revenue data from API:', rawResult); // Debug log
       
       // Normalize the data to ensure proper number types

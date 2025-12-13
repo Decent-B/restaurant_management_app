@@ -26,37 +26,37 @@ export default function OrderConfirmation() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/orders/get_bill/?order_id=${order_id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        const cartItems: CartItem[] = data.items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image,
-        }));
+    import('../api/endpoints').then(({ ordersAPI }) => {
+      ordersAPI.getBill(parseInt(order_id!))
+        .then((data) => {
+          const cartItems: CartItem[] = data.items.map((item: any) => ({
+            id: item.menu_item_id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+          }));
 
-        const order: Order = {
-          order_id: data.order_id,
-          service_type: data.service_type,
-          order_status: data.order_status,
-          total_price: data.total_price,
-          time_created: data.time_created,
-          last_modified: data.last_modified,
-          address: data.address,
-          note: data.note,
-          items: cartItems,
-        };
+          const order: Order = {
+            order_id: data.order_id,
+            service_type: data.service_type,
+            order_status: data.order_status,
+            total_price: data.total_price,
+            time_created: data.time_created,
+            last_modified: data.last_modified,
+            address: data.address,
+            note: data.note,
+            items: cartItems,
+          };
 
-        setOrder(order);
-        setIsLoading(false);
-      })
-      .catch((error) => { 
-        console.error("Failed to fetch order:", error);
-        setIsLoading(false);
-      }
-    );
+          setOrder(order);
+          setIsLoading(false);
+        })
+        .catch((error) => { 
+          console.error("Failed to fetch order:", error);
+          setIsLoading(false);
+        });
+    });
   }, [order_id]);
 
   

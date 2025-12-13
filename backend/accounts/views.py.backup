@@ -96,16 +96,6 @@ def staff_login(request: HttpRequest) -> JsonResponse:
                     'id': staff.id,
                     'name': staff.name,
                     'email': staff.email,
-                    'role': staff.role,
-                }
-            })
-        else:
-            return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=400)
-
-    return JsonResponse({'error': 'Only POST allowed'}, status=405)
-
-@csrf_exempt
-def diner_login(request: HttpRequest) -> JsonResponse:
     """
     Customer login view that returns JWT tokens.
     """
@@ -135,7 +125,17 @@ def diner_login(request: HttpRequest) -> JsonResponse:
                     'role': diner.role,
                     'diner_id': diner.id,
                 }
-            })
+            
+        password = request.POST.get('password')
+        try:
+            diner = User.objects.get(name=username, role='Customer')
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=400)
+        if diner.check_password(password):
+            # Store diner ID in session
+            request.session['diner_id'] = diner.id
+            print(request.session.items())
+            return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=400)
     return JsonResponse({'error': 'Only POST allowed'}, status=405)
@@ -143,7 +143,7 @@ def diner_login(request: HttpRequest) -> JsonResponse:
 @csrf_exempt
 def logout_view(request: HttpRequest) -> JsonResponse:
     """
-    Logs out by clearing session. For JWT, client should discard tokens.
+    Logs out either a staff or diner by clearing the session.
     """
     if request.method == 'POST':
         try:
@@ -156,48 +156,16 @@ def logout_view(request: HttpRequest) -> JsonResponse:
 @csrf_exempt
 def protected_view(request: HttpRequest) -> JsonResponse:
     """
-    Protected endpoint that requires JWT authentication.
-    Returns user information if authenticated.
+    Example view that requires a staff or diner to be logged in.
     """
-    user = get_current_user(request)
-    
-    if not user:
-        return JsonResponse({'error': 'Not authenticated'}, status=401)
-    
-    # Return user information in same format as login response
-    response_data = {
-        'role': user.role,
-        'id': user.id,
-        'name': user.name,
-        'email': user.email,
-    }
-    
-    # Add role-specific fields
-    if user.role == 'Customer':
-        response_data['diner_id'] = user.id
-    elif user.role in ['Staff', 'Manager']:
-        response_data['staff_id'] = user.id
-    
-    return JsonResponse(response_data)
-
-@csrf_exempt
-def refresh_token(request: HttpRequest) -> JsonResponse:
-    """
-    Refresh JWT access token using refresh token.
-    """
-    if request.method == 'POST':
-        refresh_token_str = request.POST.get('refresh')
-        if not refresh_token_str:
-            return JsonResponse({'error': 'Refresh token required'}, status=400)
-        
-        try:
-            refresh = RefreshToken(refresh_token_str)
-            return JsonResponse({
-                'access': str(refresh.access_token),
-            }, status=200)
-        except (InvalidToken, TokenError) as e:
-            return JsonResponse({'error': 'Invalid or expired refresh token'}, status=401)
-    return JsonResponse({'error': 'Only POST allowed'}, status=405)
+    print(request.session)
+    if 'staff_id' in request.session:
+        staff = User.objects.get(id=request.session['staff_id'], role__in=['Staff', 'Manager'])
+        # Check if staff has manager role by querying the database
+        return JsonResponse({'success': True, 'message': 'Hello Staff Bro', 'staff_id': request.session['staff_id'], 'role': staff.role})
+    elif 'diner_id' in request.session:
+        return JsonResponse({'success': True, 'message': 'Hello Diner Bro', 'diner_id': request.session['diner_id'], 'role': 'Customer'})
+    return JsonResponse({'success': False, 'error': 'Not logged in'}, status=403)
 
 @csrf_exempt
 def get_diner_info(request: HttpRequest) -> JsonResponse:

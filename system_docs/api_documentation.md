@@ -20,11 +20,45 @@ http://localhost:8000/api
 ```
 
 ## Authentication
-The API uses **session-based authentication**. Login endpoints set session cookies that must be included in subsequent requests.
 
-### Session Variables
+The API uses **JWT (JSON Web Token) Bearer authentication** with session-based fallback for backward compatibility.
+
+### JWT Authentication Flow
+
+1. **Login**: User authenticates with username/password
+2. **Receive Tokens**: Server returns:
+   - `access` token (expires in 24 hours)
+   - `refresh` token (expires in 7 days)
+   - User information
+3. **Store Tokens**: Client stores tokens in localStorage
+4. **Include Token**: All subsequent requests include: `Authorization: Bearer <access_token>`
+5. **Token Refresh**: When access token expires, use refresh token to get new access token
+6. **Logout**: Client discards tokens
+
+### Token Structure
+
+**Access Token:**
+- Lifetime: 24 hours
+- Algorithm: HS256
+- Payload contains: `user_id`, `token_type`, `exp`, `iat`
+- Used in Authorization header for all protected endpoints
+
+**Refresh Token:**
+- Lifetime: 7 days
+- Used only at `/accounts/token/refresh/` endpoint
+- Generates new access token without re-authentication
+
+### Authorization Header Format
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Session-Based Fallback
+For backward compatibility, session cookies are still set on login:
 - `staff_id`: Set when staff/manager logs in
 - `diner_id`: Set when customer logs in
+
+**Note:** JWT authentication takes precedence. If both JWT and session are present, JWT is validated first.
 
 ---
 
@@ -42,8 +76,10 @@ The system implements **Role-Based Access Control (RBAC)** with three roles:
 
 ## 1. Accounts APIs
 
+**Authentication Note:** All protected endpoints require the `Authorization: Bearer <access_token>` header unless specified otherwise. Login endpoints are public and return JWT tokens.
+
 ### 1.1 Staff/Manager Login
-Authenticates staff or manager users.
+Authenticates staff or manager users and returns JWT tokens.
 
 **Endpoint:** [`POST /accounts/staff/login/`](http://localhost:8000/api/accounts/staff/login/)
 
@@ -59,16 +95,36 @@ Authenticates staff or manager users.
 **Example Request:**
 ```bash
 curl -X POST http://localhost:8000/api/accounts/staff/login/ \
-  -d "username=Guy Fieri&password=123" \
-  -c cookies.txt
+  -d "username=Guy Fieri&password=123"
 ```
 
 **Success Response (200):**
 ```json
 {
-  "success": true
+  "success": true,
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "name": "Guy Fieri",
+    "email": "guy@example.com",
+    "role": "Manager"
+  }
 }
 ```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| success | boolean | Indicates successful authentication |
+| access | string | JWT access token (24hr expiry) |
+| refresh | string | JWT refresh token (7 day expiry) |
+| user | object | Authenticated user information |
+| user.id | number | User ID |
+| user.name | string | User name |
+| user.email | string | User email |
+| user.role | string | User role ("Staff" or "Manager") |
 
 **Error Responses:**
 
@@ -77,14 +133,20 @@ curl -X POST http://localhost:8000/api/accounts/staff/login/ \
 | 400 | Invalid credentials | `{"success": false, "error": "Invalid credentials"}` |
 | 405 | Invalid HTTP method | `{"error": "Only POST allowed"}` |
 
+**Usage:**
+1. Store `access` and `refresh` tokens in localStorage
+2. Include access token in all subsequent requests: `Authorization: Bearer <access_token>`
+3. Use refresh token to get new access token when expired
+
 **Related Endpoints:**
 - [Customer Login](#12-customer-login)
+- [Token Refresh](#14-refresh-access-token)
 - [Logout](#13-logout)
 
 ---
 
 ### 1.2 Customer Login
-Authenticates customer users.
+Authenticates customer users and returns JWT tokens.
 
 **Endpoint:** [`POST /accounts/diner/login/`](http://localhost:8000/api/accounts/diner/login/)
 
@@ -100,16 +162,38 @@ Authenticates customer users.
 **Example Request:**
 ```bash
 curl -X POST http://localhost:8000/api/accounts/diner/login/ \
-  -d "username=John Doe&password=mypassword" \
-  -c cookies.txt
+  -d "username=John Doe&password=123"
 ```
 
 **Success Response (200):**
 ```json
 {
-  "success": true
+  "success": true,
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 5,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "Customer",
+    "diner_id": 5
+  }
 }
 ```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| success | boolean | Indicates successful authentication |
+| access | string | JWT access token (24hr expiry) |
+| refresh | string | JWT refresh token (7 day expiry) |
+| user | object | Authenticated user information |
+| user.id | number | User ID |
+| user.name | string | User name |
+| user.email | string | User email |
+| user.role | string | User role ("Customer") |
+| user.diner_id | number | Same as user.id (for backward compatibility) |
 
 **Error Responses:**
 
@@ -118,23 +202,34 @@ curl -X POST http://localhost:8000/api/accounts/diner/login/ \
 | 400 | Invalid credentials | `{"success": false, "error": "Invalid credentials"}` |
 | 405 | Invalid HTTP method | `{"error": "Only POST allowed"}` |
 
+**Usage:**
+1. Store `access` and `refresh` tokens in localStorage
+2. Include access token in all subsequent requests: `Authorization: Bearer <access_token>`
+3. Use refresh token to get new access token when expired
+
 **Related Endpoints:**
-- [Staff Login](#11-staffmanager-login)
+- [Staff/Manager Login](#11-staffmanager-login)
+- [Token Refresh](#14-refresh-access-token)
 - [Logout](#13-logout)
 
 ---
 
 ### 1.3 Logout
-Clears the current session for any user.
+Clears the current session and invalidates JWT tokens (client-side).
 
 **Endpoint:** [`POST /accounts/logout/`](http://localhost:8000/api/accounts/logout/)
 
 **Authorization:** Required (any logged-in user)
 
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
 **Example Request:**
 ```bash
 curl -X POST http://localhost:8000/api/accounts/logout/ \
-  -b cookies.txt
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
 **Success Response (200):**
@@ -151,14 +246,72 @@ curl -X POST http://localhost:8000/api/accounts/logout/ \
 | 405 | Invalid HTTP method | `{"error": "Only POST allowed"}` |
 | 500 | Server error | `{"success": false, "error": "error message"}` |
 
+**Note:** Client must discard stored JWT tokens after logout.
+
 ---
 
-### 1.4 Get Customer Info
+### 1.4 Refresh Access Token
+Generates a new access token using a valid refresh token.
+
+**Endpoint:** [`POST /accounts/token/refresh/`](http://localhost:8000/api/accounts/token/refresh/)
+
+**Authorization:** None (refresh token required in body)
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| refresh | string | Yes | JWT refresh token |
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8000/api/accounts/token/refresh/ \
+  -d "refresh=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+**Success Response (200):**
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| access | string | New JWT access token (24hr expiry) |
+
+**Error Responses:**
+
+| Code | Description | Response |
+|------|-------------|----------|
+| 400 | Missing refresh token | `{"error": "Refresh token required"}` |
+| 401 | Invalid/expired token | `{"error": "Invalid or expired refresh token"}` |
+| 405 | Invalid HTTP method | `{"error": "Only POST allowed"}` |
+
+**Usage:**
+- Call this endpoint when access token expires (401 responses)
+- Update stored access token with the new one
+- If refresh fails, redirect user to login
+
+**Related Endpoints:**
+- [Staff/Manager Login](#11-staffmanager-login)
+- [Customer Login](#12-customer-login)
+
+---
+
+### 1.5 Get Customer Info
 Retrieves customer information with RBAC enforcement.
 
 **Endpoint:** [`GET /accounts/diner/info/`](http://localhost:8000/api/accounts/diner/info/)
 
 **Authorization:** Customer (own info), Manager (any customer)
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
 **Request Parameters:**
 
@@ -170,11 +323,11 @@ Retrieves customer information with RBAC enforcement.
 ```bash
 # Customer viewing own info
 curl "http://localhost:8000/api/accounts/diner/info/?diner_id=5" \
-  -b cookies.txt
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
 # Manager viewing any customer
 curl "http://localhost:8000/api/accounts/diner/info/?diner_id=10" \
-  -b cookies.txt
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
 **Success Response (200):**
@@ -210,12 +363,17 @@ curl "http://localhost:8000/api/accounts/diner/info/?diner_id=10" \
 
 ---
 
-### 1.5 Update User Info
+### 1.6 Update User Info
 Updates user information with RBAC enforcement.
 
 **Endpoint:** [`POST /accounts/user/update/`](http://localhost:8000/api/accounts/user/update/)
 
 **Authorization:** Customer (own info), Manager (any user)
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
 **Request Parameters:**
 
@@ -231,13 +389,13 @@ Updates user information with RBAC enforcement.
 ```bash
 # Customer updating own profile
 curl -X POST http://localhost:8000/api/accounts/user/update/ \
-  -d "user_id=5&email=newemail@example.com&phone_num=9876543210" \
-  -b cookies.txt
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -d "user_id=5&email=newemail@example.com&phone_num=9876543210"
 
 # Manager updating any user
 curl -X POST http://localhost:8000/api/accounts/user/update/ \
-  -d "user_id=10&name=Jane Smith&email=jane@example.com" \
-  -b cookies.txt
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -d "user_id=10&name=Jane Smith&email=jane@example.com"
 ```
 
 **Success Response (200):**
@@ -272,11 +430,11 @@ curl -X POST http://localhost:8000/api/accounts/user/update/ \
 - **Staff**: No access
 
 **Related Endpoints:**
-- [Get Customer Info](#14-get-customer-info)
+- [Get Customer Info](#15-get-customer-info)
 
 ---
 
-### 1.6 Add User Account
+### 1.7 Add User Account
 Creates a new user account (Manager only).
 
 **Endpoint:** [`POST /accounts/manager/add/`](http://localhost:8000/api/accounts/manager/add/)
@@ -444,12 +602,14 @@ curl -X POST http://localhost:8000/api/accounts/manager/update_role/ \
 
 ## 2. Menu APIs
 
+**Note:** All menu viewing endpoints (GET) are **publicly accessible** - no authentication required. Anyone can view menus and menu items without logging in.
+
 ### 2.1 List All Menus
 Retrieves all menu categories.
 
 **Endpoint:** [`GET /menu/menus/`](http://localhost:8000/api/menu/menus/)
 
-**Authorization:** None (public endpoint)
+**Authorization:** ✅ **Public** - No authentication required
 
 **Example Request:**
 ```bash
@@ -487,7 +647,7 @@ Retrieves details of a specific menu.
 
 **Endpoint:** [`GET /menu/menus/{id}/`](http://localhost:8000/api/menu/menus/1/)
 
-**Authorization:** None (public endpoint)
+**Authorization:** ✅ **Public** - No authentication required
 
 **Example Request:**
 ```bash
@@ -522,7 +682,7 @@ Retrieves all menu items, optionally filtered by menu.
 
 **Endpoint:** [`GET /menu/menu-items/`](http://localhost:8000/api/menu/menu-items/)
 
-**Authorization:** None (public endpoint)
+**Authorization:** ✅ **Public** - No authentication required
 
 **Query Parameters:**
 

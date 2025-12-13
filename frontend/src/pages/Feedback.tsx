@@ -30,24 +30,12 @@ export default function FeedbackPage() {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/api/reviews/feedbacks/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(`Failed to submit feedback: ${errorData.message || response.statusText}`);
-        return;
-      }
-
+      const { reviewsAPI } = await import('../api/endpoints');
+      await reviewsAPI.submitFeedback(payload);
       alert("Thank you for your feedback!");
       setSubmitted(true);
-    } catch (error) {
-      alert("An error occurred while submitting your feedback.");
+    } catch (error: any) {
+      alert(`Failed to submit feedback: ${error.message || 'An error occurred'}`);
       console.error(error);
     }
   };

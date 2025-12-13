@@ -113,7 +113,13 @@ sqlparse==0.5.3 \
     # via
     #   backend
     #   django
+pyjwt==2.10.1 \
+    --hash=sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb
+    # via djangorestframework-simplejwt
 tzdata==2025.2 ; sys_platform == 'win32' \
     --hash=sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8 \
     --hash=sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9
     # via django
+djangorestframework-simplejwt==5.3.1 \
+    --hash=sha256:381bc966aa46913905629d472cd72ad45faa265509764e20ffd440164c88d220
+    # via backend

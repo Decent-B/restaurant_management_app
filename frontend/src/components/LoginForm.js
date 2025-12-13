@@ -9,14 +9,8 @@ const LoginForm = () => {
   const handleDinerLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8000/api/accounts/diner/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        credentials: 'include',
-        body: new URLSearchParams({ username, password })
-        // or JSON if you prefer, but then handle CSRF
-      });
-      const data = await response.json();
+      const { accountsAPI } = await import('../api/endpoints');
+      const data = await accountsAPI.customerLogin(username, password);
       if (data.success) {
         setLoggedIn(true);
         setError('');

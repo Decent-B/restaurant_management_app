@@ -4,21 +4,26 @@ from .serializers import MenuSerializer, MenuItemSerializer
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
 
 # Create your views here.
 class MenuViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing menu instances.
+    Public read access, authenticated write access.
     """
     queryset = Menu.objects.all()
     serializer_class = MenuSerializer
+    permission_classes = [AllowAny]  # Allow public access to menu
 
 class MenuItemViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing menu item instances.
+    Public read access, authenticated write access.
     """
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    permission_classes = [AllowAny]  # Allow public access to menu items
 
 @csrf_exempt
 def add_menu_items(request: HttpResponse) -> JsonResponse:

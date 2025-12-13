@@ -42,13 +42,8 @@ export default function App() {
         setError(null);
 
         // Fetch menu items from API
-        const response = await fetch('http://localhost:8000/api/menu/menu-items/');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch menu items: ${response.status}`);
-        }
-
-        const menuItems: ApiMenuItem[] = await response.json();
+        const { menuAPI } = await import('../api/endpoints');
+        const menuItems: ApiMenuItem[] = await menuAPI.listMenuItems();
 
         if (menuItems.length === 0) {
           throw new Error('No menu items available');

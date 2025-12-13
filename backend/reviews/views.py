@@ -36,4 +36,55 @@ class FeedbackViewSet(viewsets.ModelViewSet):
 
 @csrf_exempt
 def submit_feedback(request: HttpResponse) -> JsonResponse:
-    \"\"\"\n    Submit feedback for an order.\n    RBAC: Customer can submit feedback for their own orders only.\n    \"\"\"\n    if request.method == \"POST\":\n        current_user = get_current_user(request)\n        if not is_customer(current_user):\n            return JsonResponse({\"status\": \"error\", \"message\": \"Unauthorized: Customer access required\"}, status=403)\n        \n        order_id = request.POST.get(\"order_id\") \n        rating = request.POST.get(\"rating\")\n        comment = request.POST.get(\"comment\", \"\")\n        \n        if not order_id or not rating:\n            return JsonResponse({\"status\": \"error\", \"message\": \"Missing required fields: order_id, rating\"}, status=400)\n        \n        try:\n            rating_int = int(rating)\n            if rating_int < 1 or rating_int > 5:\n                return JsonResponse({\"status\": \"error\", \"message\": \"Rating must be between 1 and 5\"}, status=400)\n        except ValueError:\n            return JsonResponse({\"status\": \"error\", \"message\": \"Invalid rating value\"}, status=400)\n        \n        try:\n            order = Order.objects.get(id=order_id)\n        except Order.DoesNotExist:\n            return JsonResponse({\"status\": \"error\", \"message\": \"Order not found\"}, status=404)\n        \n        # RBAC: Customer can only submit feedback for their own orders\n        if order.diner.id != current_user.id:\n            return JsonResponse({\"status\": \"error\", \"message\": \"Unauthorized: Can only submit feedback for own orders\"}, status=403)\n        \n        # Check if feedback already exists for this order\n        if Feedback.objects.filter(order=order).exists():\n            return JsonResponse({\"status\": \"error\", \"message\": \"Feedback already submitted for this order\"}, status=400)\n        \n        new_feedback = Feedback(\n            order=order,\n            diner=current_user,\n            rating=rating_int,\n            comment=comment\n        )\n        new_feedback.save()\n        \n        return JsonResponse({\n            \"status\": \"success\",\n            \"feedback_id\": new_feedback.id,\n            \"order_id\": order.id,\n            \"rating\": new_feedback.rating,\n            \"comment\": new_feedback.comment\n        }, status=201)\n    return JsonResponse({\"status\": \"error\", \"message\": \"Invalid request method\"}, status=405)
+    """
+    Submit feedback for an order.
+    RBAC: Customer can submit feedback for their own orders only.
+    """
+    if request.method == "POST":
+        current_user = get_current_user(request)
+        if not is_customer(current_user):
+            return JsonResponse({"status": "error", "message": "Unauthorized: Customer access required"}, status=403)
+        
+        order_id = request.POST.get("order_id") 
+        rating = request.POST.get("rating")
+        comment = request.POST.get("comment", "")
+        
+        if not order_id or not rating:
+            return JsonResponse({"status": "error", "message": "Missing required fields: order_id, rating"}, status=400)
+        
+        try:
+            rating_int = int(rating)
+            if rating_int < 1 or rating_int > 5:
+                return JsonResponse({"status": "error", "message": "Rating must be between 1 and 5"}, status=400)
+        except ValueError:
+            return JsonResponse({"status": "error", "message": "Invalid rating value"}, status=400)
+        
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Order not found"}, status=404)
+        
+        # RBAC: Customer can only submit feedback for their own orders
+        if order.diner.id != current_user.id:
+            return JsonResponse({"status": "error", "message": "Unauthorized: Can only submit feedback for own orders"}, status=403)
+        
+        # Check if feedback already exists for this order
+        if Feedback.objects.filter(order=order).exists():
+            return JsonResponse({"status": "error", "message": "Feedback already submitted for this order"}, status=400)
+        
+        new_feedback = Feedback(
+            order=order,
+            diner=current_user,
+            rating=rating_int,
+            comment=comment
+        )
+        new_feedback.save()
+        
+        return JsonResponse({
+            "status": "success",
+            "feedback_id": new_feedback.id,
+            "order_id": order.id,
+            "rating": new_feedback.rating,
+            "comment": new_feedback.comment
+        }, status=201)
+    return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)

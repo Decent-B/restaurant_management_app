@@ -48,18 +48,15 @@ export default function Profile() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/orders/diner/?diner_id=${user?.diner_id}`, {
-        method: "GET",
-        credentials: "include",
-      });
-        const data = await response.json();
+        const { ordersAPI } = await import('../api/endpoints');
+        const data: any = await ordersAPI.getDinerOrders(user?.diner_id!);
         if (data.status === "success") {
           setOrders(data.orders);
         } else {
           setOrderError(data.message || "Failed to fetch orders.");
         }
-      } catch (err) {
-        setOrderError("Error fetching order history.");
+      } catch (err: any) {
+        setOrderError(err.message || "Error fetching order history.");
       } finally {
         setLoadingOrders(false);
       }
@@ -72,7 +69,7 @@ export default function Profile() {
 
   const handleLogout = async () => {
     try {
-      const data = await logout();
+      const data: any = await logout();
       if (data.success) {
         navigate("/");
         await fetchUser();

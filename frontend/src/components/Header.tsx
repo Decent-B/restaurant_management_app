@@ -41,15 +41,11 @@ export default function Header({ transparent = false }: HeaderProps) {
 
     if (user) {
       switch (user.role) {
-        case "Diner":
+        case "Customer":  // Fixed: backend returns "Customer" not "Diner"
           label = "Profile";
           path = "/profile";
           break;
-        case "Waiter":
-          label = "Order Management";
-          path = "/staff/orders";
-          break;
-        case "Chef":
+        case "Staff":
           label = "Order Management";
           path = "/staff/orders";
           break;

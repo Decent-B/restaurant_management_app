@@ -192,20 +192,11 @@ export default function Menu() {
         setError(null);
 
         // Fetch menus and menu items in parallel
-        const [menusResponse, itemsResponse] = await Promise.all([
-          fetch('http://localhost:8000/api/menu/menus/'),
-          fetch('http://localhost:8000/api/menu/menu-items/')
+        const { menuAPI } = await import('../api/endpoints');
+        const [menus, menuItems] = await Promise.all([
+          menuAPI.listMenus(),
+          menuAPI.listMenuItems()
         ]);
-
-        if (!menusResponse.ok) {
-          throw new Error(`Failed to fetch menus: ${menusResponse.status}`);
-        }
-        if (!itemsResponse.ok) {
-          throw new Error(`Failed to fetch menu items: ${itemsResponse.status}`);
-        }
-
-        const menus: ApiMenu[] = await menusResponse.json();
-        const menuItems: ApiMenuItem[] = await itemsResponse.json();
 
         // Transform and associate items with their respective menus
         const categorizedMenus: FoodCategory[] = menus.map(menu => {

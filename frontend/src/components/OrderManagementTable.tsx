@@ -23,28 +23,17 @@ export default function OrderManagementTable({ className = "" }: OrderManagement
 
   const [orders, setOrders] = useState<Order[]>([])
   const fetchOrders = async () => {
-      // alert(`Fetching diner info... ${user.diner_id}`);
       try {
-        const response = await fetch(`http://localhost:8000/api/orders/all/`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const { ordersAPI } = await import('../api/endpoints');
+        const data: any = await ordersAPI.getAllOrders();
         if (data.status === "success") {
           setOrders(data.orders);
         } else {
           alert("Failed to fetch orders");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching orders info:", error);
+        alert(`Error: ${error.message}`);
       }
     };
 
