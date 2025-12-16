@@ -139,7 +139,7 @@ class Command(BaseCommand):
             order_item_mbappe_tra = OrderItem.objects.create(order=order_mbappe, menu_item=menu_item_tra_sua_gao_nho, quantity=2)
             
             # Seeding more example orders
-            end_date = datetime(2025, 5, 31, 23, 59, 59)
+            end_date = datetime(2026, 1, 31, 23, 59, 59)
             start_date = end_date - timedelta(days=365)
             def get_random_datetime():
                 while True:

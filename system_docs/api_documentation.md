@@ -600,6 +600,102 @@ curl -X POST http://localhost:8000/api/accounts/manager/update_role/ \
 
 ---
 
+### 1.9 List Users by Role
+Retrieves list of users filtered by role (Manager only).
+
+**Endpoint:** [`GET /accounts/manager/list/`](http://localhost:8000/api/accounts/manager/list/)
+
+**Authorization:** Manager only (JWT Bearer token required)
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| role | string | No | Filter by role: Customer, Staff, or Manager. If omitted, returns all users. |
+
+**Example Request:**
+```bash
+# Get all staff members
+curl "http://localhost:8000/api/accounts/manager/list/?role=Staff" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Get all customers
+curl "http://localhost:8000/api/accounts/manager/list/?role=Customer" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Get all users (no filter)
+curl "http://localhost:8000/api/accounts/manager/list/" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "users": [
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "phone_num": "1234567890",
+      "role": "Staff"
+    },
+    {
+      "id": 5,
+      "name": "Bob Johnson",
+      "email": "bob@example.com",
+      "phone_num": "9876543210",
+      "role": "Staff"
+    }
+  ]
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status | string | "success" or "error" |
+| users | array | Array of user objects |
+| users[].id | integer | User ID |
+| users[].name | string | User's full name |
+| users[].email | string | User's email address |
+| users[].phone_num | string | User's phone number (may be empty) |
+| users[].role | string | User's role (Customer, Staff, or Manager) |
+
+**Error Responses:**
+
+| Code | Description | Response |
+|------|-------------|----------|
+| 400 | Invalid role | `{"status": "error", "message": "Invalid role. Must be: Manager, Staff, or Customer"}` |
+| 401 | Not authenticated | `{"status": "error", "message": "Authentication required"}` |
+| 403 | Not a manager | `{"status": "error", "message": "Unauthorized: Manager access required"}` |
+| 405 | Invalid HTTP method | `{"status": "error", "message": "Invalid request method"}` |
+
+**RBAC Rules:**
+- **Manager**: Can list all users, filtered by role or unfiltered
+- **Staff**: No access
+- **Customer**: No access
+
+**Use Cases:**
+- Manager Settings page: Display staff members in Staff Management tab
+- Manager Settings page: Display customers in Customer Management tab
+- User management interface: Populate user lists for bulk operations
+- Role-based reporting and analytics
+
+**Related Endpoints:**
+- [Add User Account](#16-add-user-account)
+- [Delete User Account](#17-delete-user-account)
+- [Update User Role](#18-update-user-role)
+- [Update User Info](#15-update-user-info)
+
+---
+
 ## 2. Menu APIs
 
 **Note:** All menu viewing endpoints (GET) are **publicly accessible** - no authentication required. Anyone can view menus and menu items without logging in.
@@ -1140,12 +1236,17 @@ Retrieves all orders (Staff/Manager only).
 
 **Endpoint:** [`GET /orders/all/`](http://localhost:8000/api/orders/all/)
 
-**Authorization:** Staff and Manager only
+**Authorization:** Staff and Manager only (JWT Bearer token required)
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
 **Example Request:**
 ```bash
 curl "http://localhost:8000/api/orders/all/" \
-  -b cookies.txt
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
 **Success Response (200):**
@@ -1179,6 +1280,7 @@ curl "http://localhost:8000/api/orders/all/" \
 
 | Code | Description | Response |
 |------|-------------|----------|
+| 401 | Not authenticated | `{"status": "error", "message": "Authentication required"}` |
 | 403 | Not staff | `{"status": "error", "message": "Not authorized. Staff access required."}` |
 | 405 | Invalid HTTP method | `{"status": "error", "message": "Invalid request method"}` |
 
@@ -1189,6 +1291,86 @@ curl "http://localhost:8000/api/orders/all/" \
 
 **Related Endpoints:**
 - [Get Order by ID](#31-get-order-by-id)
+- [Update Order Status](#34-update-order-status)
+- [Get Pending Orders](#36-get-pending-orders)
+
+---
+
+### 3.6 Get Pending Orders
+Retrieves orders with PENDING status (Staff/Manager only). Useful for kitchen/order management views.
+
+**Endpoint:** [`GET /orders/kitchen/`](http://localhost:8000/api/orders/kitchen/)
+
+**Authorization:** Staff and Manager only (JWT Bearer token required)
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Example Request:**
+```bash
+curl "http://localhost:8000/api/orders/kitchen/" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "orders": [
+    {
+      "order_id": 1,
+      "service_type": "Dine-in",
+      "note": "No onions, please",
+      "time_created": "2024-01-15 12:30:00",
+      "items": [
+        {
+          "menu_item__name": "Burger",
+          "quantity": 2,
+          "menu_item__description": "Juicy beef burger with lettuce and tomato"
+        },
+        {
+          "menu_item__name": "Fries",
+          "quantity": 1,
+          "menu_item__description": "Crispy golden fries"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| order_id | integer | Unique order identifier |
+| service_type | string | "Dine-in", "Takeout", or "Delivery" |
+| note | string | Special instructions from customer |
+| time_created | string | Order creation timestamp |
+| items | array | Array of ordered items with details |
+
+**Error Responses:**
+
+| Code | Description | Response |
+|------|-------------|----------|
+| 401 | Not authenticated | `{"status": "error", "message": "Authentication required"}` |
+| 403 | Not staff | `{"status": "error", "message": "Not authorized. Staff access required."}` |
+| 405 | Invalid HTTP method | `{"status": "error", "message": "Invalid request method"}` |
+
+**RBAC Rules:**
+- **Staff**: Can view pending orders
+- **Manager**: Can view pending orders
+- **Customer**: No access
+
+**Use Cases:**
+- Kitchen display system showing orders to prepare
+- Order management dashboard focusing on new orders
+- Staff workflow for order preparation
+
+**Related Endpoints:**
+- [Get All Orders](#35-get-all-orders)
 - [Update Order Status](#34-update-order-status)
 
 ---
@@ -1297,170 +1479,362 @@ curl -X POST http://localhost:8000/api/submit_feedback/ \
 
 ## 5. Analytics APIs
 
+All analytics endpoints support **JWT Bearer token authentication** with session-based fallback. Include `Authorization: Bearer <access_token>` header in all requests.
+
 ### 5.1 Get Rating Analytics
-Retrieves rating statistics.
+Retrieves rating statistics for feedbacks within a given time range.
 
-**Endpoint:** [`GET /analytics/rating/`](http://localhost:8000/api/analytics/rating/)
+**Endpoint:** `GET /analytics/rating/`
 
-**Authorization:** Staff and Manager only
+**Authorization:** Staff and Manager only (JWT or session)
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| start_date | string (YYYY-MM-DD) | No | Filter from date |
-| end_date | string (YYYY-MM-DD) | No | Filter to date |
+| Parameter | Type | Required | Format | Description |
+|-----------|------|----------|--------|-------------|
+| start | string | Yes | YYYY-MM-DD HH:MM:SS | Start datetime (inclusive) |
+| end | string | Yes | YYYY-MM-DD HH:MM:SS | End datetime (inclusive) |
 
 **Example Request:**
 ```bash
-# Get all-time rating analytics
-curl "http://localhost:8000/api/analytics/rating/" \
-  -b cookies.txt
-
-# Get rating analytics for specific period
-curl "http://localhost:8000/api/analytics/rating/?start_date=2024-01-01&end_date=2024-01-31" \
-  -b cookies.txt
+# Get rating analytics for a date range
+curl -X GET "http://localhost:8000/api/analytics/rating/?start=2024-01-01%2000:00:00&end=2024-12-31%2023:59:59" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
 **Success Response (200):**
 ```json
 {
   "status": "success",
-  "analytics": {
-    "average_rating": 4.5,
-    "total_reviews": 150,
-    "rating_distribution": {
-      "5": 80,
-      "4": 45,
-      "3": 15,
-      "2": 7,
-      "1": 3
-    }
+  "mean_rating": 4.35,
+  "rating_counts": {
+    "5": 142,
+    "4": 89,
+    "3": 34,
+    "2": 12,
+    "1": 8
   }
 }
 ```
 
+**Response Fields:**
+- `mean_rating` (float): Average rating across all feedbacks in the period
+- `rating_counts` (object): Count of feedbacks for each rating (1-5 stars)
+
+**Error Responses:**
+
+**400 Bad Request** - Missing or invalid parameters:
+```json
+{
+  "status": "error",
+  "message": "start and end parameters are required"
+}
+```
+
+**400 Bad Request** - Invalid datetime format:
+```json
+{
+  "status": "error",
+  "message": "Invalid datetime format, use YYYY-MM-DD HH:MM:SS"
+}
+```
+
+**401 Unauthorized** - No authentication provided:
+```json
+{
+  "status": "error",
+  "message": "Unauthorized access"
+}
+```
+
+**403 Forbidden** - User is not Staff/Manager:
+```json
+{
+  "status": "error",
+  "message": "Unauthorized access"
+}
+```
+
+**405 Method Not Allowed** - Wrong HTTP method:
+```json
+{
+  "status": "error",
+  "message": "Invalid HTTP method"
+}
+```
+
 **RBAC Rules:**
-- **Staff**: Can view rating analytics
-- **Manager**: Can view rating analytics
-- **Customer**: No access
+- **Staff**: ✅ Can view rating analytics
+- **Manager**: ✅ Can view rating analytics
+- **Customer**: ❌ No access
+
+**Use Cases:**
+- Display customer satisfaction metrics on Manager dashboard
+- Analyze rating trends over time
+- Compare ratings between different time periods
+- Generate satisfaction reports
 
 **Related Endpoints:**
-- [List All Feedback](#41-list-all-feedback)
+- [Submit Feedback](#41-submit-feedback)
 - [Get Revenue Analytics](#52-get-revenue-analytics)
 
 ---
 
 ### 5.2 Get Revenue Analytics
-Retrieves revenue statistics (Manager only).
+Retrieves total revenue and monthly revenue breakdown for orders within a given time range.
 
-**Endpoint:** [`GET /analytics/revenue/`](http://localhost:8000/api/analytics/revenue/)
+**Endpoint:** `GET /analytics/revenue/`
 
-**Authorization:** Manager only
+**Authorization:** Staff and Manager only (JWT or session)
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| start_date | string (YYYY-MM-DD) | No | Filter from date |
-| end_date | string (YYYY-MM-DD) | No | Filter to date |
-| group_by | string | No | "day", "week", or "month" |
+| Parameter | Type | Required | Format | Description |
+|-----------|------|----------|--------|-------------|
+| start | string | Yes | YYYY-MM-DD HH:MM:SS | Start datetime (inclusive) |
+| end | string | Yes | YYYY-MM-DD HH:MM:SS | End datetime (inclusive) |
 
 **Example Request:**
 ```bash
-# Get monthly revenue summary
-curl "http://localhost:8000/api/analytics/revenue/?start_date=2024-01-01&end_date=2024-01-31&group_by=day" \
-  -b cookies.txt
+# Get revenue analytics for the last 3 months
+curl -X GET "http://localhost:8000/api/analytics/revenue/?start=2024-10-01%2000:00:00&end=2024-12-31%2023:59:59" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
 **Success Response (200):**
 ```json
 {
   "status": "success",
-  "analytics": {
-    "total_revenue": 12500.50,
-    "period_data": [
-      {
-        "date": "2024-01-15",
-        "revenue": 850.25,
-        "order_count": 45
-      },
-      {
-        "date": "2024-01-16",
-        "revenue": 920.75,
-        "order_count": 52
-      }
-    ]
-  }
-}
-```
-
-**RBAC Rules:**
-- **Manager**: Can view revenue analytics
-- **Staff**: No access
-- **Customer**: No access
-
-**Related Endpoints:**
-- [Get Menu Items Order Count](#53-get-menu-items-order-count)
-- [Get All Orders](#35-get-all-orders)
-
----
-
-### 5.3 Get Menu Items Order Count
-Retrieves order count statistics for menu items.
-
-**Endpoint:** [`GET /analytics/order-count/`](http://localhost:8000/api/analytics/order-count/)
-
-**Authorization:** Staff and Manager only
-
-**Query Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| start_date | string (YYYY-MM-DD) | No | Filter from date |
-| end_date | string (YYYY-MM-DD) | No | Filter to date |
-| limit | integer | No | Number of top items to return |
-
-**Example Request:**
-```bash
-# Get top 10 most ordered items
-curl "http://localhost:8000/api/analytics/order-count/?limit=10" \
-  -b cookies.txt
-
-# Get order counts for specific period
-curl "http://localhost:8000/api/analytics/order-count/?start_date=2024-01-01&end_date=2024-01-31" \
-  -b cookies.txt
-```
-
-**Success Response (200):**
-```json
-{
-  "status": "success",
-  "analytics": [
+  "total_revenue": 45678900.00,
+  "monthly_revenue": [
     {
-      "menu_item": "Burger",
-      "menu_item_id": 1,
-      "total_orders": 250,
-      "total_quantity": 485
+      "month": "2024-10",
+      "total_revenue": 14523400.00
     },
     {
-      "menu_item": "Fries",
-      "menu_item_id": 2,
-      "total_orders": 220,
-      "total_quantity": 380
+      "month": "2024-11",
+      "total_revenue": 15678900.00
+    },
+    {
+      "month": "2024-12",
+      "total_revenue": 15476600.00
     }
   ]
 }
 ```
 
+**Response Fields:**
+- `total_revenue` (number): Sum of all order totals in the period (in VND)
+- `monthly_revenue` (array): Breakdown by month
+  - `month` (string): Month in YYYY-MM format
+  - `total_revenue` (number): Total revenue for that month (in VND)
+
+**Notes:**
+- Revenue is calculated from `Order.total_price` field
+- Orders are filtered by `Order.time_created` timestamp
+- Monthly aggregation uses `TruncMonth` on `time_created`
+- Returns 0 for months with no orders
+
+**Error Responses:**
+
+**400 Bad Request** - Missing parameters:
+```json
+{
+  "status": "error",
+  "message": "start and end parameters are required"
+}
+```
+
+**400 Bad Request** - Invalid datetime format:
+```json
+{
+  "status": "error",
+  "message": "Invalid datetime format, use YYYY-MM-DD HH:MM:SS"
+}
+```
+
+**401 Unauthorized** - No authentication:
+```json
+{
+  "status": "error",
+  "message": "Unauthorized access"
+}
+```
+
+**403 Forbidden** - Not Staff/Manager:
+```json
+{
+  "status": "error",
+  "message": "Unauthorized access"
+}
+```
+
+**405 Method Not Allowed**:
+```json
+{
+  "status": "error",
+  "message": "Invalid HTTP method"
+}
+```
+
 **RBAC Rules:**
-- **Staff**: Can view order count analytics
-- **Manager**: Can view order count analytics
-- **Customer**: No access
+- **Staff**: ✅ Can view revenue analytics
+- **Manager**: ✅ Can view revenue analytics
+- **Customer**: ❌ No access
+
+**Use Cases:**
+- Display monthly revenue trends on Analytics Dashboard
+- Calculate growth rate between consecutive months
+- Generate revenue reports for business analysis
+- Track total revenue over custom date ranges
+- Visualize revenue line charts
+
+**Frontend Integration:**
+```typescript
+// Example from AnalyticsDashboard.tsx
+const { analyticsAPI } = await import('../api/endpoints');
+const startParam = "2024-01-01 00:00:00";
+const endParam = "2024-12-31 23:59:59";
+const result = await analyticsAPI.getRevenueAnalytics(startParam, endParam);
+
+// Calculate metrics
+const totalRevenue = result.total_revenue;
+const monthlyData = result.monthly_revenue;
+const avgMonthly = totalRevenue / monthlyData.length;
+const growthRate = ((lastMonth - prevMonth) / prevMonth) * 100;
+```
+
+**Related Endpoints:**
+- [Get All Orders](#35-get-all-orders)
+- [Get Rating Analytics](#51-get-rating-analytics)
+- [Get Menu Items Order Count](#53-get-menu-items-order-count)
+
+---
+
+### 5.3 Get Menu Items Order Count
+Retrieves the count of ordered menu items within a given time range.
+
+**Endpoint:** `GET /analytics/order-count/`
+
+**Authorization:** Staff and Manager only (JWT or session)
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Format | Description |
+|-----------|------|----------|--------|-------------|
+| start | string | Yes | YYYY-MM-DD HH:MM:SS | Start datetime (inclusive) |
+| end | string | Yes | YYYY-MM-DD HH:MM:SS | End datetime (inclusive) |
+
+**Example Request:**
+```bash
+# Get order counts for menu items
+curl -X GET "http://localhost:8000/api/analytics/order-count/?start=2024-01-01%2000:00:00&end=2024-12-31%2023:59:59" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "menu_items_order_count": [
+    {
+      "menu_item__id": 1025,
+      "order_count": 485
+    },
+    {
+      "menu_item__id": 1026,
+      "order_count": 423
+    },
+    {
+      "menu_item__id": 1102,
+      "order_count": 389
+    }
+  ]
+}
+```
+
+**Response Fields:**
+- `menu_items_order_count` (array): List of menu item IDs and their order quantities
+  - `menu_item__id` (integer): ID of the menu item
+  - `order_count` (integer): Total quantity ordered across all orders
+
+**Notes:**
+- Counts are from `OrderItem.quantity` field (sum per menu item)
+- OrderItems are filtered by `Order.last_modified` timestamp
+- Only includes items that were ordered in the given period
+- Returns empty array if no orders found
+
+**Error Responses:**
+
+**400 Bad Request** - Missing parameters:
+```json
+{
+  "status": "error",
+  "message": "start and end parameters are required"
+}
+```
+
+**400 Bad Request** - Invalid datetime format:
+```json
+{
+  "status": "error",
+  "message": "Invalid datetime format, use YYYY-MM-DD HH:MM:SS"
+}
+```
+
+**401 Unauthorized**:
+```json
+{
+  "status": "error",
+  "message": "Unauthorized access"
+}
+```
+
+**403 Forbidden**:
+```json
+{
+  "status": "error",
+  "message": "Unauthorized access"
+}
+```
+
+**405 Method Not Allowed**:
+```json
+{
+  "status": "error",
+  "message": "Invalid HTTP method"
+}
+```
+
+**RBAC Rules:**
+- **Staff**: ✅ Can view order count analytics
+- **Manager**: ✅ Can view order count analytics
+- **Customer**: ❌ No access
+
+**Use Cases:**
+- Identify most popular menu items
+- Optimize inventory based on demand
+- Plan menu adjustments based on sales data
+- Generate best-seller reports
 
 **Related Endpoints:**
 - [List All Menu Items](#23-list-all-menu-items)
-- [Get All Orders](#35-get-all-orders)
+- [Get Revenue Analytics](#52-get-revenue-analytics)
 
 ---
 
@@ -1557,9 +1931,8 @@ PENDING → PREPARING → READY → COMPLETED
 - **Delivery**: Order delivered to customer
 
 ### Payment Methods
-- **CASH**: Cash payment
-- **CARD**: Credit/Debit card
-- **MOBILE_PAYMENT**: Digital wallet or mobile payment app
+- **CASH**: Cash payment (marks order as paid immediately)
+- **ONLINE_BANKING**: Mobile banking with QR code (returns QR code image URL for scanning)
 
 ### Rating Scale
 - **1**: Poor
@@ -1583,6 +1956,11 @@ PENDING → PREPARING → READY → COMPLETED
    - Images are served from `/media/` directory
    - Full URL: `http://localhost:8000/media/{image_path}`
    - Ensure proper file permissions for image uploads
+   - **Important**: When adding new files to `backend/media/` while containers are running, use `docker cp` to copy them into the container:
+     ```bash
+     docker cp backend/media/demo_qr_code.webp restaurant_management_app-backend-1:/app/media/
+     ```
+   - Verify accessibility: `curl -I http://localhost:8000/media/demo_qr_code.webp`
 
 4. **Timestamps**: 
    - All timestamps use UTC timezone
@@ -1712,6 +2090,95 @@ curl -X POST http://localhost:8000/api/accounts/manager/update_role/ \
 curl -X POST http://localhost:8000/api/accounts/logout/ \
   -b cookies.txt
 ```
+
+---
+
+## Troubleshooting
+
+### QR Code Not Displaying
+
+**Problem**: When processing ONLINE_BANKING payment, the QR code image doesn't show in the payment dialog.
+
+**Diagnostic Steps**:
+
+1. **Check API Response**:
+   ```bash
+   # Test payment endpoint with a pending order ID
+   curl -X POST http://localhost:8000/api/orders/pay/ \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+     -d "order_id=250102&payment_method=ONLINE_BANKING"
+   ```
+   Expected response should include:
+   ```json
+   {
+     "status": "success",
+     "qr_code_data": "PAYMENT|ORDER:250102|...",
+     "qr_code_image": "/media/demo_qr_code.webp",
+     ...
+   }
+   ```
+
+2. **Verify Media File Accessibility**:
+   ```bash
+   curl -I http://localhost:8000/media/demo_qr_code.webp
+   ```
+   Should return `HTTP/1.1 200 OK`. If you get `404 Not Found`:
+   - File doesn't exist in container
+   - Solution: `docker cp backend/media/demo_qr_code.webp restaurant_management_app-backend-1:/app/media/`
+
+3. **Check Frontend Code Deployment**:
+   ```bash
+   docker-compose exec frontend grep -n "qrCodeImage" /app/src/components/OrderManagementTable.tsx
+   ```
+   Should show multiple matches. If empty, frontend code isn't deployed:
+   - Solution: `docker-compose down && docker-compose up -d --build`
+
+4. **Browser Console Errors**:
+   - Open browser DevTools (F12)
+   - Go to Console tab
+   - Try processing a payment
+   - Look for:
+     - CORS errors (configure backend CORS settings)
+     - Network errors (check `http://localhost:8000/media/demo_qr_code.webp` loads)
+     - JavaScript errors in OrderManagementTable component
+
+5. **Check Container Logs**:
+   ```bash
+   # Backend logs
+   docker-compose logs backend --tail 50
+   
+   # Frontend logs
+   docker-compose logs frontend --tail 50
+   ```
+
+**Common Solutions**:
+
+- **Media file not in container**: Use `docker cp` to copy file
+- **Frontend code not updated**: Full rebuild with `docker-compose up -d --build`
+- **CORS issues**: Check `config/settings.py` CORS configuration
+- **Wrong image path**: Verify path is `/media/demo_qr_code.webp` (not `media/` or absolute path)
+
+### Payment Processing Errors
+
+**403 Forbidden**:
+- Check JWT token is valid and not expired
+- Verify user has correct role (Staff for processing all orders, Customer for own orders)
+- Solution: Re-login to get fresh token
+
+**Order Not Found (404)**:
+- Verify order ID exists: `docker-compose exec backend python manage.py shell -c "from orders.models import Order; print(list(Order.objects.filter(status='PENDING').values_list('id', flat=True)))"`
+
+**Order Already Paid**:
+- Check payment status before attempting to pay again
+- Solution: Use different pending order
+
+### Frontend Not Updating
+
+**Changes not reflecting**:
+1. Try restart: `docker-compose restart frontend`
+2. If that doesn't work: `docker-compose down && docker-compose up -d --build`
+3. Clear browser cache: Ctrl+Shift+R (hard refresh)
+4. Check Docker logs for build errors
 
 ---
 

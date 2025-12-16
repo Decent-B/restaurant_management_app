@@ -52,28 +52,28 @@ export default function Menu() {
         {
           id: 1,
           name: "Spring Rolls",
-          price: "$8.99",
+          price: "220000 VND",
           image: "/dishes/spring-rolls.jpg",
           description: "Fresh vegetables and herbs wrapped in rice paper with a sweet chili dipping sauce."
         },
         {
           id: 2,
           name: "Garlic Bread",
-          price: "$5.99",
+          price: "150000 VND",
           image: "/dishes/garlic-bread.jpg",
           description: "Warm baguette with garlic butter and herbs."
         },
         {
           id: 3,
           name: "Chicken Wings",
-          price: "$10.99",
+          price: "270000 VND",
           image: "/dishes/chicken-wings.jpg",
           description: "Crispy wings tossed in your choice of sauce: Buffalo, BBQ, or Honey Garlic."
         },
         {
           id: 4,
           name: "Calamari",
-          price: "$11.99",
+          price: "300000 VND",
           image: "/dishes/calamari.jpg",
           description: "Lightly breaded squid served with marinara sauce and lemon."
         },
@@ -88,28 +88,28 @@ export default function Menu() {
         {
           id: 5,
           name: "Grilled Salmon",
-          price: "$22.99",
+          price: "570000 VND",
           image: "/dishes/grilled-salmon.jpg",
           description: "Fresh salmon fillet grilled with lemon herb butter, served with seasonal vegetables."
         },
         {
           id: 6,
           name: "Pasta Carbonara",
-          price: "$18.99",
+          price: "470000 VND",
           image: "/dishes/pasta-carbonara.jpg",
           description: "Al dente pasta with creamy sauce, pancetta, and parmesan cheese."
         },
         {
           id: 7,
           name: "Beef Tenderloin",
-          price: "$29.99",
+          price: "750000 VND",
           image: "/dishes/beef-tenderloin.jpg",
           description: "8oz beef tenderloin cooked to your preference, served with mashed potatoes and roasted vegetables."
         },
         {
           id: 8,
           name: "Chicken Parmesan",
-          price: "$19.99",
+          price: "500000 VND",
           image: "/dishes/chicken-parmesan.jpg",
           description: "Breaded chicken breast topped with marinara sauce and melted mozzarella, served with spaghetti."
         },
@@ -124,28 +124,28 @@ export default function Menu() {
         {
           id: 9,
           name: "Chocolate Cake",
-          price: "$7.99",
+          price: "200000 VND",
           image: "/dishes/chocolate-cake.jpg",
           description: "Rich chocolate cake with a molten center, served with vanilla ice cream."
         },
         {
           id: 10,
           name: "Cheesecake",
-          price: "$6.99",
+          price: "175000 VND",
           image: "/dishes/cheesecake.jpg",
           description: "Creamy New York style cheesecake with berry compote."
         },
         {
           id: 11,
           name: "Tiramisu",
-          price: "$8.99",
+          price: "220000 VND",
           image: "/dishes/tiramisu.jpg",
           description: "Coffee-flavored Italian dessert made of ladyfingers dipped in coffee, layered with mascarpone cheese."
         },
         {
           id: 12,
           name: "Apple Pie",
-          price: "$6.99",
+          price: "175000 VND",
           image: "/dishes/apple-pie.jpg",
           description: "Warm apple pie with a flaky crust, served with a scoop of vanilla ice cream."
         },
@@ -244,7 +244,7 @@ export default function Menu() {
   // Loading state
   if (loading) {
     return (
-      <Layout title="Menu | Cooking Mama">
+      <Layout title="Menu | Cozy Kitchen">
         <div className="bg-[#f8f5f0] min-h-screen py-16">
           <div className="w-full">
             <h1 className="lg:text-6xl text-4xl font-bold text-center mb-16 text-gray-800">Menu</h1>
@@ -260,7 +260,7 @@ export default function Menu() {
 
   // Main content (displays both real data and dummy data with error message)
   return (
-    <Layout title="Menu | Cooking Mama">
+    <Layout title="Menu | Cozy Kitchen">
       <div className="bg-[#f8f5f0] min-h-screen py-16">
         <div className="w-full">
           <h1 className="lg:text-6xl text-4xl font-bold text-center mb-8 text-gray-800">Menu</h1>
@@ -336,7 +336,7 @@ export default function Menu() {
             filteredCategories.map((category) => (
               <div key={category.id} className="mb-16">
                 <div className="flex items-center justify-between mb-6">
-                  <div className="lg:pl-32 pl-4">
+                  <div className="lg:pl-8 pl-4">
                     <h2 className="lg:text-4xl text-2xl font-semibold text-gray-800 mb-2">
                       {category.name}
                       {searchTerm && (
@@ -360,7 +360,7 @@ export default function Menu() {
                 ) : (
                   <div 
                     id={`scroll-${category.name}`} 
-                    className="flex overflow-x-auto pb-6 lg:px-32 px-4 gap-6 scrollbar-hide scroll-smooth"
+                    className="flex overflow-x-auto pb-6 lg:pl-8 lg:pr-32 px-4 gap-6 scrollbar-hide scroll-smooth"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {category.items.map((item) => (

@@ -13,7 +13,7 @@ export default function Header({ transparent = false }: HeaderProps) {
   // if (user) {
   //   alert(`Welcome back, ${user.role}!`);
   // } else {
-  //   alert("Welcome to Cooking Mama!");
+  //   alert("Welcome to Cozy Kitchen!");
   // }
   
   useEffect(() => {
@@ -72,19 +72,68 @@ export default function Header({ transparent = false }: HeaderProps) {
     );
   };
   
-  return (
-    <header className={`py-6 px-12 ${headerClasses}`}>
-      <div className="flex justify-between items-center">
-        <div className="flex items-center">
-          <Link to="/" className="text-3xl font-bold">Cooking Mama</Link>
-        </div>
-        
-        <nav className="hidden md:block">
-          <ul className="flex xl:space-x-24 space-x-14 text-xl">
+  const renderNavigation = () => {
+    if (!user) {
+      // Not logged in - show default navigation
+      return (
+        <>
+          <li><Link to="/" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Home</Link></li>
+          <li><Link to="/menu" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Menu</Link></li>
+          <li><Link to="/order" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Order</Link></li>
+          {renderUserLink()}
+        </>
+      );
+    }
+
+    // Logged in - role-specific navigation
+    switch (user.role) {
+      case "Customer":
+        return (
+          <>
             <li><Link to="/" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Home</Link></li>
             <li><Link to="/menu" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Menu</Link></li>
             <li><Link to="/order" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Order</Link></li>
             {renderUserLink()}
+          </>
+        );
+      
+      case "Staff":
+        return (
+          <>
+            <li><Link to="/staff/orders" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Order Management</Link></li>
+            <li><Link to="/profile" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Profile</Link></li>
+          </>
+        );
+      
+      case "Manager":
+        return (
+          <>
+            <li><Link to="/settings" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Settings</Link></li>
+          </>
+        );
+      
+      default:
+        return (
+          <>
+            <li><Link to="/" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Home</Link></li>
+            <li><Link to="/menu" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Menu</Link></li>
+            <li><Link to="/order" className={`hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Order</Link></li>
+            {renderUserLink()}
+          </>
+        );
+    }
+  };
+  
+  return (
+    <header className={`py-6 px-12 ${headerClasses}`}>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          <Link to="/" className="text-3xl font-bold">Cozy Kitchen</Link>
+        </div>
+        
+        <nav className="hidden md:block">
+          <ul className="flex xl:space-x-24 space-x-14 text-xl">
+            {renderNavigation()}
           </ul>
         </nav>
         
@@ -101,10 +150,7 @@ export default function Header({ transparent = false }: HeaderProps) {
       {isMenuOpen && (
         <div className="md:hidden">
           <ul className="flex flex-col space-y-2 mt-2 text-right">
-            <li><Link to="/" className={`block hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Home</Link></li>
-            <li><Link to="/menu" className={`block hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Menu</Link></li>
-            <li><Link to="/order" className={`block hover:${isScrolled ? 'text-gray-600' : 'text-gray-300'}`}>Order</Link></li>
-            {renderUserLink()}
+            {renderNavigation()}
           </ul>
         </div>
       )}

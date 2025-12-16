@@ -75,6 +75,14 @@ def staff_login(request: HttpRequest) -> JsonResponse:
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        
+        # Debug logging
+        print(f"[staff_login] username: {username}, password: {'***' if password else None}")
+        print(f"[staff_login] request.POST: {dict(request.POST)}")
+        print(f"[staff_login] Content-Type: {request.content_type}")
+
+        if not username or not password:
+            return JsonResponse({'success': False, 'error': 'Username and password required'}, status=400)
 
         try:
             staff = User.objects.get(name=username, role__in=['Staff', 'Manager'])
@@ -340,25 +348,72 @@ def update_roles(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
 
 @csrf_exempt
+def list_users_by_role(request: HttpRequest) -> JsonResponse:
+    """
+    List all users filtered by role.
+    RBAC: Only Manager can access this endpoint.
+    """
+    if request.method == "GET":
+        current_user = get_current_user(request)
+        if not is_manager(current_user):
+            return JsonResponse({"status": "error", "message": "Unauthorized: Manager access required"}, status=403)
+        
+        role = request.GET.get("role")  # Staff, Customer, Manager
+        
+        if role:
+            if role not in ['Manager', 'Staff', 'Customer']:
+                return JsonResponse({"status": "error", "message": "Invalid role. Must be: Manager, Staff, or Customer"}, status=400)
+            users = User.objects.filter(role=role)
+        else:
+            users = User.objects.all()
+        
+        users_data = []
+        for user in users:
+            users_data.append({
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "phone_num": user.phone_num if hasattr(user, 'phone_num') else "",
+                "role": user.role,
+            })
+        
+        return JsonResponse({"status": "success", "users": users_data}, status=200)
+    return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
+
+@csrf_exempt
 def update_user_info(request: HttpRequest) -> JsonResponse:
     """
     Update user information.
-    RBAC: Customer can update own info, Manager can update any user.
+    RBAC: Customer and Staff can update own info, Manager can update any user.
     """
+    print(f"[update_user_info] VIEW CALLED! Method: {request.method}")
+    print(f"[update_user_info] Headers: {dict(request.headers)}")
+    print(f"[update_user_info] POST data: {request.POST}")
+    
     if request.method == "POST":
         current_user = get_current_user(request)
+        print(f"[update_user_info] current_user from get_current_user: {current_user}")
+        
         if not current_user:
+            print(f"[update_user_info] No current_user - returning 401")
             return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+        
+        print(f"[update_user_info] current_user: {current_user.name}, role: {current_user.role}, id: {current_user.id}")
         
         user_id = request.POST.get("user_id")
         if not user_id:
             return JsonResponse({"status": "error", "message": "Missing required field: user_id"}, status=400)
         
-        # RBAC: Customer can only update own info, Manager can update any
-        if is_customer(current_user):
+        print(f"[update_user_info] user_id to update: {user_id}")
+        print(f"[update_user_info] is_customer: {is_customer(current_user)}, is_staff: {is_staff(current_user)}, is_manager: {is_manager(current_user)}")
+        
+        # RBAC: Customer and Staff can update own info, Manager can update any user
+        if is_customer(current_user) or is_staff(current_user):
             if str(current_user.id) != str(user_id):
+                print(f"[update_user_info] Unauthorized: current_user.id ({current_user.id}) != user_id ({user_id})")
                 return JsonResponse({"status": "error", "message": "Unauthorized: Can only update own information"}, status=403)
         elif not is_manager(current_user):
+            print(f"[update_user_info] Unauthorized: not a manager")
             return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=403)
         
         try:

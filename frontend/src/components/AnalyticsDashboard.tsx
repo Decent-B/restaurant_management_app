@@ -32,9 +32,9 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
   
   // Date range state
   const [fromDate, setFromDate] = useState<string>(() => {
-    // Default to 3 months ago
+    // Default to 12 months ago to show seeded data
     const date = new Date();
-    date.setMonth(date.getMonth() - 3);
+    date.setMonth(date.getMonth() - 12);
     return date.toISOString().slice(0, 16); // Format for datetime-local input
   });
   
@@ -126,8 +126,15 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
 
   // Format date for API (YYYY-MM-DD HH:MM:SS)
   const formatDateForAPI = (dateString: string): string => {
+    // Don't use toISOString() as it converts to UTC, use local time instead
     const date = new Date(dateString);
-    return date.toISOString().slice(0, 19).replace('T', ' ');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
   // Fetch rating data separately
@@ -138,12 +145,16 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
       const startParam = formatDateForAPI(fromDate);
       const endParam = formatDateForAPI(toDate);
       
+      console.log('[fetchRatingData] Calling API with params:', { startParam, endParam });
+      
       const { analyticsAPI } = await import('../api/endpoints');
       const result: RatingData = await analyticsAPI.getRatingAnalytics(startParam, endParam);
+      console.log('[fetchRatingData] Rating data from API:', result);
+      
       setRatingData(result);
     } catch (err) {
-      console.error('Error fetching rating data:', err);
-      // setRatingError(err instanceof Error ? err.message : 'Failed to load rating data');
+      console.error('[fetchRatingData] Error fetching rating data:', err);
+      setRatingError(err instanceof Error ? err.message : 'Failed to load rating data');
       setRatingData(dummyRatingData);
     }
   };
@@ -180,18 +191,20 @@ export default function AnalyticsDashboard({ className = "" }: AnalyticsDashboar
       const startParam = formatDateForAPI(fromDate);
       const endParam = formatDateForAPI(toDate);
       
+      console.log('[fetchRevenueData] Calling API with params:', { startParam, endParam });
+      
       const { analyticsAPI } = await import('../api/endpoints');
       const rawResult = await analyticsAPI.getRevenueAnalytics(startParam, endParam);
-      console.log('Raw revenue data from API:', rawResult); // Debug log
+      console.log('[fetchRevenueData] Raw revenue data from API:', rawResult);
       
       // Normalize the data to ensure proper number types
       const result: RevenueData = normalizeRevenueData(rawResult);
-      console.log('Normalized revenue data:', result); // Debug log
+      console.log('[fetchRevenueData] Normalized revenue data:', result);
       
       setRevenueData(result);
     } catch (err) {
-      console.error('Error fetching revenue data:', err);
-      // setRevenueError(err instanceof Error ? err.message : 'Failed to load revenue data');
+      console.error('[fetchRevenueData] Error fetching revenue data:', err);
+      setRevenueError(err instanceof Error ? err.message : 'Failed to load revenue data');
       setRevenueData(generateDummyRevenueData(fromDate, toDate));
     }
   };

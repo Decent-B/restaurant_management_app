@@ -64,7 +64,7 @@ export default function OrderMenu() {
       </div>
 
       {/* Right Panel (Cart) */}
-      <div className="w-full max-w-sm shrink-0">
+      <div className="w-full max-w-sm shrink-0 sticky top-[140px] self-start">
         <h2 className="text-xl font-bold text-[#242e56] ml-4">My Cart</h2>
         <Cart items={cartItems}/>
       </div>

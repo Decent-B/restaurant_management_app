@@ -15,6 +15,8 @@ import { AuthProvider } from '../contexts/AuthContext'
 import FeedbackPage from './Feedback'
 import Profile from './Profile'
 import Settings from './Settings'
+import ManagerSettings from './ManagerSettings'
+import StaffOrders from './StaffOrders'
 import ProtectedRoute from "../components/ProtectedRoute"
 
 const rootElement = document.getElementById('root');
@@ -65,7 +67,12 @@ if (rootElement) {
               } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <Settings />
+                  <ManagerSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/orders" element={
+                <ProtectedRoute>
+                  <StaffOrders />
                 </ProtectedRoute>
               } />
               <Route path="/login" element={<Login />} />

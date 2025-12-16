@@ -4,7 +4,7 @@ export default function Footer() {
         <div>
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <p>&copy; {new Date().getFullYear()} Cooking Mama. All rights reserved.</p>
+              <p>&copy; {new Date().getFullYear()} Cozy Kitchen. All rights reserved.</p>
             </div>
             <div className="flex space-x-4">
               <a href="#" className="hover:text-gray-300">Privacy Policy</a>

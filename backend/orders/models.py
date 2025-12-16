@@ -8,8 +8,10 @@ from django.utils import timezone
 class Order(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),
+        ('PREPARING', 'Preparing'),
+        ('READY', 'Ready'),
         ('COMPLETED', 'Completed'),
-        ('CANCELED', 'Canceled'),
+        ('CANCELLED', 'Cancelled'),
     ]
     service_type = models.CharField(max_length=50)  # e.g. "Dine-In", "Takeout", etc.
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')

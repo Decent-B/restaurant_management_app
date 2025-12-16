@@ -87,7 +87,7 @@ export default function Order() {
           <div className="w-full md:w-1/3 p-6 bg-white flex flex-col justify-center">
             {/* Welcome Note */}
             <h2 className="text-lg font-bold text-gray-800 text-center mb-2">
-              Welcome to <br /> <span className="text-xl text-blue-900">Cooking Mama</span>
+              Welcome to <br /> <span className="text-xl text-blue-900">Cozy Kitchen</span>
             </h2>
             {/* Service type input field*/}
             <p className="text-sm font-medium text-gray-700 text-center mb-2 mt-8">Choose your service type:</p>

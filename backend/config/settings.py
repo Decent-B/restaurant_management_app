@@ -60,13 +60,22 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-SESSION_COOKIE_SAMESITE = None
-SESSION_COOKIE_SECURE = False 
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 SESSION_COOKIE_SAMESITE = 'Lax'     # or 'None' if using HTTPS
 SESSION_COOKIE_SECURE = False      # switch to True in production HTTPS

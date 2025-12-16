@@ -13,11 +13,18 @@ def get_rating_analytics(request: HttpRequest) -> JsonResponse:
     """
     Returns the mean rating for feedbacks within a given time range.
     Expects 'start' and 'end' query parameters in the format 'YYYY-MM-DD HH:MM:SS'.
+    Supports both JWT and session authentication.
     """
     if request.method != "GET":
         return JsonResponse({"status": "error", "message": "Invalid HTTP method"}, status=405)
     
-    if "staff_id" not in request.session:
+    from accounts.views import get_current_user, is_staff
+    current_user = get_current_user(request)
+    
+    if not current_user:
+        return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=401)
+    
+    if not is_staff(current_user):
         return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=403)
 
     start = request.GET.get("start")
@@ -54,11 +61,18 @@ def get_revenue_analytics(request: HttpRequest) -> JsonResponse:
     """
     Returns the total revenue (sum of order total prices) within a given time range.
     Expects 'start' and 'end' query parameters in the format 'YYYY-MM-DD HH:MM:SS'.
+    Supports both JWT and session authentication.
     """
     if request.method != "GET":
         return JsonResponse({"status": "error", "message": "Invalid HTTP method"}, status=405)
     
-    if "staff_id" not in request.session:
+    from accounts.views import get_current_user, is_staff
+    current_user = get_current_user(request)
+    
+    if not current_user:
+        return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=401)
+    
+    if not is_staff(current_user):
         return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=403)
 
     start = request.GET.get("start")
@@ -76,7 +90,7 @@ def get_revenue_analytics(request: HttpRequest) -> JsonResponse:
             "message": "Invalid datetime format, use YYYY-MM-DD HH:MM:SS"
         }, status=400)
     
-    orders = Order.objects.filter(last_modified__range=(start_dt, end_dt))
+    orders = Order.objects.filter(time_created__range=(start_dt, end_dt))
     # Group orders by month and sum total_price for each month
 
     monthly_revenue = (
@@ -100,11 +114,18 @@ def get_menu_items_order_count(request: HttpRequest) -> JsonResponse:
     Returns the count of ordered menu items within a given time range.
     Expects 'start' and 'end' query parameters in the format 'YYYY-MM-DD HH:MM:SS'.
     Returns a list of menu item names and their total order quantities.
+    Supports both JWT and session authentication.
     """
     if request.method != "GET":
         return JsonResponse({"status": "error", "message": "Invalid HTTP method"}, status=405)
     
-    if "staff_id" not in request.session:
+    from accounts.views import get_current_user, is_staff
+    current_user = get_current_user(request)
+    
+    if not current_user:
+        return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=401)
+    
+    if not is_staff(current_user):
         return JsonResponse({"status": "error", "message": "Unauthorized access"}, status=403)
 
     start = request.GET.get("start")
@@ -122,7 +143,7 @@ def get_menu_items_order_count(request: HttpRequest) -> JsonResponse:
             "message": "Invalid datetime format, use YYYY-MM-DD HH:MM:SS"
         }, status=400)
     
-    order_items = OrderItem.objects.filter(order__last_modified__range=(start_dt, end_dt))
+    order_items = OrderItem.objects.filter(order__time_created__range=(start_dt, end_dt))
     counts = order_items.values("menu_item__id").annotate(order_count=Sum("quantity"))
     result = list(counts)
     

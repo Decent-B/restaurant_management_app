@@ -188,7 +188,7 @@ export const accountsAPI = {
     return handleResponse(response, makeRequest);
   },
 
-  // Update user info (Manager can update any user, Customer can update self)
+  // Update user info (Manager can update any user, Customer/Staff can update self)
   updateUserInfo: async (userId: number, data: {
     name?: string;
     email?: string;
@@ -199,7 +199,10 @@ export const accountsAPI = {
     const makeRequest = () => fetch(`${API_BASE_URL}/accounts/user/update/`, {
       method: 'POST',
       credentials: 'include',
-      headers: getAuthHeaders(),
+      headers: {
+        ...getAuthHeaders(),
+        // Don't set Content-Type - let browser set it automatically for FormData
+      },
       body: formData,
     });
     

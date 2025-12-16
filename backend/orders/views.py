@@ -6,9 +6,18 @@ from menu.models import MenuItem
 from accounts.models import User
 import json
 
+# Import JWT authentication helper from accounts
+from accounts.views import get_current_user as get_user_from_jwt
+
 # Authorization helper functions
 def get_current_user(request):
-    """Get currently logged-in user from session"""
+    """Get currently logged-in user, checking JWT first then session"""
+    # Try JWT first
+    user = get_user_from_jwt(request)
+    if user:
+        return user
+    
+    # Fallback to session
     if 'staff_id' in request.session:
         try:
             return User.objects.get(id=request.session['staff_id'], role__in=['Staff', 'Manager'])
@@ -482,11 +491,15 @@ def get_diner_orders(request: HttpResponse) -> JsonResponse:
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
 
 @csrf_exempt
+@csrf_exempt
 def get_all_orders(request: HttpResponse) -> JsonResponse:
     """
     Get all orders. Restricted to staff members.
+    Supports both JWT and session authentication.
     """
-    if "staff_id" not in request.session: # Check if staff is logged in
+    user = get_current_user(request)
+    
+    if not user or not is_staff(user):
         return JsonResponse({"status": "error", "message": "Not authorized. Staff access required."}, status=403)
 
     if request.method == "GET":
@@ -511,37 +524,60 @@ def get_kitchen_orders(request: HttpResponse) -> JsonResponse:
     """
     Get orders relevant to the kitchen (e.g., PENDING, PREPARING).
     Restricted to staff members.
+    Supports both JWT and session authentication.
+    Returns up to 100 orders by default.
     """
-    if "staff_id" not in request.session: # Check if staff is logged in
+    user = get_current_user(request)
+    
+    if not user or not is_staff(user):
         return JsonResponse({"status": "error", "message": "Not authorized. Staff access required."}, status=403)
 
     if request.method == "GET":
-        # Define kitchen-relevant statuses. This might expand if you add more statuses like 'PREPARING'.
-        kitchen_statuses = ['PENDING'] 
-        orders = Order.objects.filter(status__in=kitchen_statuses).order_by('time_created') # Oldest pending first
+        # Get limit parameter (default 100)
+        try:
+            limit = int(request.GET.get('limit', 100))
+            limit = min(limit, 100)  # Cap at 100 for performance
+        except ValueError:
+            limit = 100
+        
+        # Define kitchen-relevant statuses
+        kitchen_statuses = ['PENDING', 'PREPARING', 'READY'] 
+        orders = Order.objects.filter(status__in=kitchen_statuses).order_by('time_created')[:limit]
         
         orders_data = []
         for order in orders:
             items_details = list(order.order_items.values('menu_item__name', 'quantity', 'menu_item__description'))
             orders_data.append({
                 "order_id": order.id,
+                "diner_id": order.diner.id,
+                "diner_name": order.diner.name,
                 "service_type": order.service_type,
+                "status": order.status,
                 "note": order.note,
+                "total_price": str(order.total_price),
                 "time_created": order.time_created.strftime('%Y-%m-%d %H:%M:%S'),
                 "items": items_details
             })
-        return JsonResponse({"status": "success", "kitchen_orders": orders_data})
+        return JsonResponse({"status": "success", "orders": orders_data})
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
 
-# Example of a view for processing payments (not fully detailed in urls.py yet)
+# Payment processing views
 @csrf_exempt
 def process_payment(request: HttpResponse) -> JsonResponse:
-    if "diner_id" not in request.session:
-         return JsonResponse({"status": "error", "message": "Not authorized"}, status=403)
-
+    """
+    Process payment for an order.
+    RBAC: Customer can pay their own orders, Staff can process any order payment.
+    
+    If payment_method is ONLINE_BANKING, returns QR code data.
+    If payment_method is CASH, marks order as paid immediately.
+    """
     if request.method == "POST":
+        current_user = get_current_user(request)
+        if not current_user:
+            return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+        
         order_id = request.POST.get("order_id")
-        payment_method = request.POST.get("payment_method") # e.g., 'CASH', 'ONLINE_BANKING'
+        payment_method = request.POST.get("payment_method")  # 'CASH' or 'ONLINE_BANKING'
 
         if not order_id or not payment_method:
             return JsonResponse({"status": "error", "message": "Order ID and payment method are required"}, status=400)
@@ -551,27 +587,99 @@ def process_payment(request: HttpResponse) -> JsonResponse:
             return JsonResponse({"status": "error", "message": f"Invalid payment method. Must be one of {valid_methods}"}, status=400)
 
         try:
-            order = Order.objects.get(id=order_id, diner_id=request.session["diner_id"])
-            if order.status == 'COMPLETED':
-                 return JsonResponse({"status": "error", "message": "Order already completed and paid"}, status=400)
-            if order.status == 'CANCELED':
-                 return JsonResponse({"status": "error", "message": "Cannot pay for a canceled order"}, status=400)
-
-            # Check if payment already exists
-            if hasattr(order, 'payment') and order.payment.status == 'paid':
-                return JsonResponse({"status": "success", "message": "Order already paid"})
-
-            # Create or update payment record
-            payment, _ = Payment.objects.update_or_create(
-                order=order,
-                defaults={'method': payment_method, 'status': 'paid'} # Mark as paid
-            )
-            
-            # Update order status to COMPLETED upon successful payment
-            order.status = 'COMPLETED'
-            order.save()
-            
-            return JsonResponse({"status": "success", "message": "Payment successful", "payment_id": payment.id, "order_status": order.status})
+            order = Order.objects.get(id=order_id)
         except Order.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Order not found"}, status=404)
+        
+        # RBAC: Customer can only pay their own orders, Staff can process any
+        if is_customer(current_user) and order.diner.id != current_user.id:
+            return JsonResponse({"status": "error", "message": "Unauthorized: Can only pay for own orders"}, status=403)
+        
+        # Validate order status
+        if order.status == 'COMPLETED':
+            return JsonResponse({"status": "error", "message": "Order already completed and paid"}, status=400)
+        if order.status == 'CANCELLED':
+            return JsonResponse({"status": "error", "message": "Cannot pay for a cancelled order"}, status=400)
+
+        # Check if payment already exists
+        if hasattr(order, 'payment') and order.payment.status == 'paid':
+            return JsonResponse({"status": "success", "message": "Order already paid"})
+
+        # Create or update payment record
+        payment, created = Payment.objects.update_or_create(
+            order=order,
+            defaults={'method': payment_method, 'status': 'pending' if payment_method == 'ONLINE_BANKING' else 'paid'}
+        )
+        
+        response_data = {
+            "status": "success",
+            "payment_id": payment.id,
+            "order_id": order.id,
+            "amount": str(order.total_price),
+            "payment_method": payment_method
+        }
+        
+        # If CASH, mark as paid immediately and update order status
+        if payment_method == 'CASH':
+            payment.status = 'paid'
+            payment.save()
+            order.status = 'COMPLETED'
+            order.save()
+            response_data["message"] = "Cash payment confirmed"
+            response_data["order_status"] = "COMPLETED"
+        
+        # If ONLINE_BANKING, return QR code image
+        elif payment_method == 'ONLINE_BANKING':
+            # Return QR code image URL
+            # In production, this would integrate with actual payment gateway
+            qr_data = f"PAYMENT|ORDER:{order.id}|AMOUNT:{order.total_price}|ID:{payment.id}"
+            response_data["message"] = "Scan QR code to complete payment"
+            response_data["qr_code_data"] = qr_data
+            response_data["qr_code_image"] = "/media/demo_qr_code.webp"
+            response_data["order_status"] = order.status
+        
+        return JsonResponse(response_data)
+    
+    return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
+
+@csrf_exempt
+def confirm_payment(request: HttpResponse) -> JsonResponse:
+    """
+    Confirm a pending payment (for online banking).
+    RBAC: Staff only.
+    """
+    if request.method == "POST":
+        current_user = get_current_user(request)
+        if not is_staff(current_user):
+            return JsonResponse({"status": "error", "message": "Unauthorized: Staff access required"}, status=403)
+        
+        payment_id = request.POST.get("payment_id")
+        if not payment_id:
+            return JsonResponse({"status": "error", "message": "Payment ID required"}, status=400)
+        
+        try:
+            payment = Payment.objects.get(id=payment_id)
+        except Payment.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Payment not found"}, status=404)
+        
+        if payment.status == 'paid':
+            return JsonResponse({"status": "success", "message": "Payment already confirmed"})
+        
+        # Mark payment as paid
+        payment.status = 'paid'
+        payment.save()
+        
+        # Update order status
+        order = payment.order
+        order.status = 'COMPLETED'
+        order.save()
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "Payment confirmed",
+            "payment_id": payment.id,
+            "order_id": order.id,
+            "order_status": "COMPLETED"
+        })
+    
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)

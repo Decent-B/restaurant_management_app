@@ -145,7 +145,7 @@ export default function CartSummary() {
           </div>
         </div>
 
-        <div className="w-full max-w-sm shrink-0">
+        <div className="w-full max-w-sm shrink-0 sticky top-[140px] self-start">
           <div className="bg-white shadow-md rounded-2xl p-6 w-full max-w-sm">
             <h2 className="text-xl font-bold text-center text-gray-600 mb-4">Order Information</h2>
             <div className="text-sm text-gray-700 space-y-4">

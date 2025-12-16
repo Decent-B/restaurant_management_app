@@ -5,7 +5,7 @@ interface HeadProps {
   children?: ReactNode;
 }
 
-export default function Head({ title = 'Cooking Mama', children }: HeadProps) {
+export default function Head({ title = 'Cozy Kitchen', children }: HeadProps) {
   // This component is for meta tags, title, etc.
   return (
     <>

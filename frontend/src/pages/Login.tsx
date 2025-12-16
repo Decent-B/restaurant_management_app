@@ -115,7 +115,7 @@ export default function Login() {
   };
 
   return (
-    <Layout title="Login | Cooking Mama">
+    <Layout title="Login | Cozy Kitchen">
       <div className="flex items-center justify-center min-h-screen bg-[#e5ddce] px-4 py-12">
         <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
           {/* Left Section */}

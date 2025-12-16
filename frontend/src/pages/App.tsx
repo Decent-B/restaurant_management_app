@@ -29,10 +29,10 @@ export default function App() {
 
   // Dummy signature dishes for error state
   const dummySignatureDishes: SignatureDish[] = [
-    { id: 1, name: "Truffle Pasta", price: "$24", image: "https://placehold.co/300" },
-    { id: 2, name: "Wagyu Steak", price: "$45", image: "https://placehold.co/300" },
-    { id: 3, name: "Lobster Risotto", price: "$38", image: "https://placehold.co/300" },
-    { id: 4, name: "Matcha Tiramisu", price: "$12", image: "https://placehold.co/300" },
+    { id: 1, name: "Truffle Pasta", price: "600000 VND", image: "https://placehold.co/300" },
+    { id: 2, name: "Wagyu Steak", price: "1125000 VND", image: "https://placehold.co/300" },
+    { id: 3, name: "Lobster Risotto", price: "950000 VND", image: "https://placehold.co/300" },
+    { id: 4, name: "Matcha Tiramisu", price: "300000 VND", image: "https://placehold.co/300" },
   ];
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function App() {
   };
 
   return (
-    <Layout title="Home | Cooking Mama" transparentHeader={true}>
+    <Layout title="Home | Cozy Kitchen" transparentHeader={true}>
       {/* Background video */}
       <div className="h-screen w-full relative">
         <video className="h-full w-full object-cover opacity-60" autoPlay loop muted playsInline>

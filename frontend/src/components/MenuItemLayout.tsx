@@ -18,7 +18,7 @@ export default function MenuItemLayout({ item }: MenuItemProps) {
       <p className="text-sm text-gray-600 mb-2">{Number(item.price).toLocaleString()} VND</p>
       <button 
         onClick={() => addToCart(item.id)}
-        className="bg-white border border-gray-400 rounded-full w-8 h-8 flex items-center justify-center text-xl text-gray-800 shadow">
+        className="bg-white border border-gray-400 rounded-full w-8 h-8 flex items-center justify-center text-xl text-gray-800 shadow hover:shadow-lg hover:shadow-blue-400/50 hover:border-blue-400 transition-all duration-200">
         +
       </button>
     </div>

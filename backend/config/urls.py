@@ -50,10 +50,12 @@ urlpatterns = [
     path('api/accounts/manager/add/', account_views.add_accounts, name='add_accounts'),
     path('api/accounts/manager/remove/', account_views.delete_accounts, name='delete_accounts'),
     path('api/accounts/manager/update_role/', account_views.update_roles, name='update_roles'),
+    path('api/accounts/manager/list/', account_views.list_users_by_role, name='list_users_by_role'),
 
     # Menu URLs (using router)
     path('api/menu/', include(menu_router.urls)),
     path('api/menu/items/add/', menu_views.add_menu_items, name='add_menu_items'),
+    path('api/menu/items/update/', menu_views.change_item_info, name='update_menu_items'),
     path('api/menu/items/remove', menu_views.remove_menu_items, name='remove_menu_items'),
 
     # Orders URLs
@@ -71,6 +73,7 @@ urlpatterns = [
     path('api/orders/all/', order_views.get_all_orders, name='get_all_orders'),
     path('api/orders/kitchen/', order_views.get_kitchen_orders, name='get_kitchen_orders'),
     path('api/orders/pay/', order_views.process_payment, name='pay_for_order'),
+    path('api/orders/payment/confirm/', order_views.confirm_payment, name='confirm_payment'),
     # Reviews URLs (using router)
     path('api/reviews/', include(review_router.urls)),
     path('api/submit_feedback/', review_views.submit_feedback, name="submit_feedback"),

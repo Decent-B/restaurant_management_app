@@ -45,6 +45,15 @@ export default function Profile() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [orderError, setOrderError] = useState("");
 
+  // Edit dialog state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    email: "",
+  });
+  const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -81,6 +90,43 @@ export default function Profile() {
     }
   };
 
+  const handleEditClick = () => {
+    setEditFormData({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+    setEditError("");
+    setEditSuccess("");
+    setShowEditDialog(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditError("");
+    setEditSuccess("");
+
+    try {
+      const { accountsAPI } = await import('../api/endpoints');
+      const result: any = await accountsAPI.updateUserInfo(user?.id!, {
+        name: editFormData.name,
+        email: editFormData.email,
+      });
+      
+      if (result.status === "success") {
+        setEditSuccess("Profile updated successfully!");
+        await fetchUser(); // Refresh user data
+        setTimeout(() => {
+          setShowEditDialog(false);
+          setEditSuccess("");
+        }, 1500);
+      } else {
+        setEditError(result.message || "Failed to update profile.");
+      }
+    } catch (err: any) {
+      setEditError(err.message || "Error updating profile.");
+    }
+  };
+
   const renderPanel = () => {
     switch (activePanel) {
       case "Personal Information":
@@ -88,34 +134,9 @@ export default function Profile() {
           <>
             <h2 className="text-2xl font-semibold mb-6">Personal Information</h2>
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block font-semibold mb-1">First name</label>
-                <input type="text" disabled className="w-full bg-gray-100 p-2 rounded" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Last name</label>
-                <input type="text" value="Tran" disabled className="w-full bg-gray-100 p-2 rounded" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Nick name</label>
-                <input type="text" disabled className="w-full bg-gray-100 p-2 rounded" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Phone number</label>
-                <div className="flex">
-                  <span className="bg-gray-200 px-3 py-2 rounded-l text-sm">(+84)</span>
-                  <input type="text" disabled className="w-full bg-gray-100 p-2 rounded-r" />
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Birthday</label>
-                <input type="text" value="13/06/2002" disabled className="w-full bg-gray-100 p-2 rounded" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Gender</label>
-                <select disabled className="w-full bg-gray-100 p-2 rounded">
-                  <option>Female</option>
-                </select>
+              <div className="col-span-2">
+                <label className="block font-semibold mb-1">Name</label>
+                <input type="text" value={user?.name || ''} disabled className="w-full bg-gray-100 p-2 rounded" />
               </div>
               <div className="col-span-2">
                 <label className="block font-semibold mb-1">Email address</label>
@@ -123,12 +144,18 @@ export default function Profile() {
                   <span className="bg-gray-200 px-3 py-2 rounded-l">
                     <FaGoogle />
                   </span>
-                  <input type="text" disabled className="w-full bg-gray-100 p-2 rounded-r" />
+                  <input type="text" value={user?.email || ''} disabled className="w-full bg-gray-100 p-2 rounded-r" />
                 </div>
+              </div>
+              <div className="col-span-2">
+                <label className="block font-semibold mb-1">Role</label>
+                <input type="text" value={user?.role || ''} disabled className="w-full bg-gray-100 p-2 rounded" />
               </div>
             </div>
             <div className="mt-6">
-              <button className="bg-[#1a2a5b] text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-[#16224a]">
+              <button 
+                onClick={handleEditClick}
+                className="bg-[#1a2a5b] text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-[#16224a]">
                 Edit Personal Information
               </button>
             </div>
@@ -160,7 +187,7 @@ export default function Profile() {
                       <td className="px-4 py-2">{order.order_id}</td>
                       <td className="px-4 py-2">{new Date(order.time_created).toLocaleDateString()}</td>
                       <td className="px-4 py-2">{order.items_count}</td>
-                      <td className="px-4 py-2">€ {Number(order.total_price).toLocaleString()}</td>
+                      <td className="px-4 py-2">{Number(order.total_price).toLocaleString()} VND</td>
                       <td className="px-4 py-2">
                         <span
                           className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
@@ -189,7 +216,7 @@ export default function Profile() {
       <div className="w-[280px] bg-white shadow-md rounded-xl m-4 flex flex-col py-6">
         <div className="flex flex-col items-center">
           <FaSmile className="text-4xl mb-2 text-gray-700" />
-          <span className="font-semibold text-lg">Khanh Tran</span>
+          <span className="font-semibold text-lg">{user?.name || 'User'}</span>
         </div>
         <div className="mt-6 space-y-2">
           <SidebarItem
@@ -198,12 +225,15 @@ export default function Profile() {
             active={activePanel === "Personal Information"}
             onClick={() => setActivePanel("Personal Information")}
           />
-          <SidebarItem
-            icon={FaShoppingCart}
-            label="Order History"
-            active={activePanel === "Order History"}
-            onClick={() => setActivePanel("Order History")}
-          />
+          {/* Only show Order History for Customer role */}
+          {user?.role === "Customer" && (
+            <SidebarItem
+              icon={FaShoppingCart}
+              label="Order History"
+              active={activePanel === "Order History"}
+              onClick={() => setActivePanel("Order History")}
+            />
+          )}
         </div>
         <div className="mt-auto px-4 pt-6">
           <button
@@ -220,6 +250,67 @@ export default function Profile() {
       <div className="flex-1 bg-white shadow-md rounded-xl m-4 px-8 py-6">
         {renderPanel()}
       </div>
+
+      {/* Edit Profile Dialog */}
+      {showEditDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-xl font-semibold mb-4">Edit Personal Information</h3>
+            
+            <form onSubmit={handleEditSubmit}>
+              <div className="mb-4">
+                <label className="block font-semibold mb-1">Name</label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full border border-gray-300 p-2 rounded"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block font-semibold mb-1">Email address</label>
+                <input
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="w-full border border-gray-300 p-2 rounded"
+                  required
+                />
+              </div>
+
+              {editError && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+                  {editError}
+                </div>
+              )}
+
+              {editSuccess && (
+                <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
+                  {editSuccess}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowEditDialog(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#1a2a5b] text-white rounded hover:bg-[#16224a]"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
