@@ -77,6 +77,8 @@ urlpatterns = [
     # Reviews URLs (using router)
     path('api/reviews/', include(review_router.urls)),
     path('api/submit_feedback/', review_views.submit_feedback, name="submit_feedback"),
+    path('api/reviews/all/', review_views.get_all_feedbacks, name='get_all_feedbacks'),
+    path('api/reviews/order/', review_views.get_order_feedback, name='get_order_feedback'),
 
     # Analytics URLs
     path('api/analytics/rating/', analytics_views.get_rating_analytics, name='get_rating_analytics'),

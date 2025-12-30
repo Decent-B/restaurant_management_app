@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaUserTie, FaUser, FaChartBar, FaShoppingCart, FaSignOutAlt, FaBars, FaEdit, FaTrash, FaPlus } from "react-icons/fa";
+import { FaUserTie, FaUser, FaChartBar, FaShoppingCart, FaSignOutAlt, FaBars, FaEdit, FaTrash, FaPlus, FaStar } from "react-icons/fa";
 import { logout } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -28,6 +28,17 @@ interface Menu {
   id: number;
   name: string;
   description: string;
+}
+
+interface Feedback {
+  id: number;
+  order_id: number | null;
+  diner_id: number | null;
+  diner_name: string;
+  diner_email: string;
+  rating: number;
+  comment: string;
+  time_created: string;
 }
 
 const SidebarItem = ({
@@ -77,6 +88,14 @@ export default function ManagerSettings() {
   const [showMenuItemDialog, setShowMenuItemDialog] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
 
+  // Reviews Management state
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [loadingFeedbacks, setLoadingFeedbacks] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsSearch, setReviewsSearch] = useState("");
+  const reviewsPerPage = 10;
+
   useEffect(() => {
     if (activePanel === "Staff Management") {
       fetchStaffList();
@@ -84,6 +103,10 @@ export default function ManagerSettings() {
       fetchCustomerList();
     } else if (activePanel === "Menus Management") {
       fetchMenus();
+    } else if (activePanel === "Reviews Management") {
+      setReviewsPage(1); // Reset pagination
+      setReviewsSearch(""); // Clear search
+      fetchFeedbacks();
     }
   }, [activePanel]);
 
@@ -157,6 +180,37 @@ export default function ManagerSettings() {
     } catch (error) {
       console.error('Error fetching menu items:', error);
     }
+  };
+
+  const fetchFeedbacks = async () => {
+    setLoadingFeedbacks(true);
+    setFeedbackError("");
+    try {
+      const { reviewsAPI } = await import('../api/endpoints');
+      const data: any = await reviewsAPI.listFeedbacks();
+      if (data.status === "success") {
+        setFeedbacks(data.feedbacks);
+      } else {
+        setFeedbackError(data.message || "Failed to fetch feedbacks");
+      }
+    } catch (error: any) {
+      setFeedbackError(error.message || "Error fetching feedbacks");
+      console.error('Error fetching feedbacks:', error);
+    } finally {
+      setLoadingFeedbacks(false);
+    }
+  };
+
+  const getRatingStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <span key={i} className={i <= rating ? "text-yellow-500" : "text-gray-300"}>
+          ★
+        </span>
+      );
+    }
+    return stars;
   };
 
   const handleDeleteStaff = async (userId: number) => {
@@ -592,6 +646,146 @@ export default function ManagerSettings() {
           </div>
         );
 
+      case "Reviews Management":
+        // Filter feedbacks based on search query
+        const filteredFeedbacks = feedbacks.filter(feedback => {
+          if (!reviewsSearch.trim()) return true;
+          
+          const searchLower = reviewsSearch.toLowerCase();
+          const matchesOrderId = feedback.order_id?.toString().includes(searchLower);
+          const matchesComment = feedback.comment?.toLowerCase().includes(searchLower);
+          const matchesCustomer = 
+            feedback.diner_name?.toLowerCase().includes(searchLower) ||
+            feedback.diner_email?.toLowerCase().includes(searchLower);
+          
+          return matchesOrderId || matchesComment || matchesCustomer;
+        });
+
+        // Paginate filtered feedbacks
+        const totalReviewsPages = Math.ceil(filteredFeedbacks.length / reviewsPerPage);
+        const paginatedFeedbacks = filteredFeedbacks.slice(
+          (reviewsPage - 1) * reviewsPerPage,
+          reviewsPage * reviewsPerPage
+        );
+
+        return (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6">Customer Reviews</h2>
+            
+            {/* Search Bar */}
+            <div className="mb-6">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by order ID, customer name/email, or comment..."
+                  value={reviewsSearch}
+                  onChange={(e) => {
+                    setReviewsSearch(e.target.value);
+                    setReviewsPage(1); // Reset to page 1 when searching
+                  }}
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <svg
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              {reviewsSearch && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Found {filteredFeedbacks.length} review{filteredFeedbacks.length !== 1 ? 's' : ''}
+                  {filteredFeedbacks.length !== feedbacks.length && ` (filtered from ${feedbacks.length} total)`}
+                </p>
+              )}
+            </div>
+            
+            {loadingFeedbacks ? (
+              <div className="text-center py-8">Loading reviews...</div>
+            ) : feedbackError ? (
+              <div className="text-center py-8 text-red-600">{feedbackError}</div>
+            ) : filteredFeedbacks.length === 0 ? (
+              <div className="text-center py-8 text-gray-600">
+                {reviewsSearch ? 'No reviews match your search' : 'No reviews found'}
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  {paginatedFeedbacks.map((feedback) => (
+                    <div key={feedback.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-semibold text-lg">{feedback.diner_name}</h3>
+                            <span className="text-2xl">{getRatingStars(feedback.rating)}</span>
+                          </div>
+                          <p className="text-sm text-gray-600">{feedback.diner_email}</p>
+                          {feedback.order_id && (
+                            <p className="text-sm text-gray-500 mt-1">Order #{feedback.order_id}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">
+                            {new Date(feedback.time_created).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(feedback.time_created).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {feedback.comment && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded">
+                          <p className="text-gray-700">{feedback.comment}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {filteredFeedbacks.length > reviewsPerPage && (
+                  <div className="flex items-center justify-between mt-6">
+                    <button
+                      onClick={() => setReviewsPage(prev => Math.max(1, prev - 1))}
+                      disabled={reviewsPage === 1}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        reviewsPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-[#1a2a5b] text-white hover:bg-[#16224a]'
+                      }`}
+                    >
+                      ← Previous
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      Page {reviewsPage} of {totalReviewsPages}
+                      <span className="text-gray-400 ml-2">({filteredFeedbacks.length} review{filteredFeedbacks.length !== 1 ? 's' : ''})</span>
+                    </span>
+                    <button
+                      onClick={() => setReviewsPage(prev => Math.min(totalReviewsPages, prev + 1))}
+                      disabled={reviewsPage >= totalReviewsPages}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        reviewsPage >= totalReviewsPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-[#1a2a5b] text-white hover:bg-[#16224a]'
+                      }`}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }
@@ -636,6 +830,12 @@ export default function ManagerSettings() {
             label="Analytics"
             active={activePanel === "Analytics"}
             onClick={() => setActivePanel("Analytics")}
+          />
+          <SidebarItem
+            icon={FaStar}
+            label="Reviews Management"
+            active={activePanel === "Reviews Management"}
+            onClick={() => setActivePanel("Reviews Management")}
           />
         </div>
         <div className="mt-auto px-4 pt-6">
