@@ -49,7 +49,7 @@ services:
         - action: rebuild
           path: package.json
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - backend  # if your frontend calls backend APIs
 

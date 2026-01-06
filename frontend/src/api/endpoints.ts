@@ -567,9 +567,9 @@ export const ordersAPI = {
 // ===========================
 
 export const reviewsAPI = {
-  // List all feedbacks
+  // List all feedbacks (Manager only)
   listFeedbacks: async () => {
-    const makeRequest = () => fetch(`${API_BASE_URL}/reviews/feedbacks/`, {
+    const makeRequest = () => fetch(`${API_BASE_URL}/reviews/all/`, {
       method: 'GET',
       credentials: 'include',
       headers: getAuthHeaders(),
@@ -579,13 +579,25 @@ export const reviewsAPI = {
     return handleResponse(response, makeRequest);
   },
 
-  // Submit feedback for an order
+  // Get feedback for a specific order
+  getOrderFeedback: async (orderId: number) => {
+    const makeRequest = () => fetch(`${API_BASE_URL}/reviews/order/?order_id=${orderId}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: getAuthHeaders(),
+    });
+    
+    const response = await makeRequest();
+    return handleResponse(response, makeRequest);
+  },
+
+  // Submit feedback (optionally associated with an order)
   submitFeedback: async (data: {
-    order: number;
+    order_id?: number;
     rating: number;
     comment?: string;
   }) => {
-    const makeRequest = () => fetch(`${API_BASE_URL}/reviews/feedbacks/`, {
+    const makeRequest = () => fetch(`${API_BASE_URL}/submit_feedback/`, {
       method: 'POST',
       credentials: 'include',
       headers: { 

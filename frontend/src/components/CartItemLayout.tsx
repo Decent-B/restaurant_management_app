@@ -21,8 +21,9 @@ export default function CartItemLayout({item}: CartItemProps) {
           className="w-16 h-16 object-cover rounded"
         />
         {/* <div className="w-12 h-12 object-cover rounded" /> */}
-        <div>
+        <div className="flex-1">
           <p className="font-semibold text-gray-700">{item.name}</p>
+          <p className="text-sm text-gray-600 mt-1">Quantity: {item.quantity}</p>
         </div>
       </div>
       <div className="flex items-center justify-between mt-3">
