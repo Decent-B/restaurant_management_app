@@ -92,8 +92,8 @@ export default function App() {
           <source src="/home.mp4" type="video/mp4"/>
         </video>
         <div className="absolute left-12 bottom-18">
-          <div className="md:text-7xl text-5xl font-bold mb-6">Restaurant name&trade;</div>
-          <div className="text-3xl font-semibold">Restaurant slogan.</div>
+          <div className="md:text-7xl text-5xl font-bold mb-6">Cozy Kitchen</div>
+          <div className="text-3xl font-semibold">Comfort Food, Made Like Home.</div>
         </div>
       </div>
       
